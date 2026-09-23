@@ -134,11 +134,10 @@ function doPost(e) {
     if (e && e.postData && e.postData.contents) {
       cuerpo = JSON.parse(e.postData.contents);
     }
-    exigirClave_(cuerpo.clave);
-
     var accion = cuerpo.accion || '';
 
-    // Acciones del panel del taller: van con la clave de administracion.
+    // Acciones del panel del taller: van con la clave de administracion y por eso
+    // se atienden ANTES de exigir la clave publica del sitio.
     if (ACCIONES_ADMIN.indexOf(accion) > -1) {
       var problema = errorClaveAdmin_(cuerpo.claveAdmin);
       if (problema) {
@@ -146,6 +145,8 @@ function doPost(e) {
       }
       return respuesta_(accionAdmin_(cuerpo));
     }
+
+    exigirClave_(cuerpo.clave);
 
     if (accion === 'crear') {
       return respuesta_(crearReserva_(cuerpo));

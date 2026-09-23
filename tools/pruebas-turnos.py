@@ -503,6 +503,44 @@ def main() -> int:
                           for turno in [anotado, segundo]]
         verificar(all(limpieza_panel), "se cancelan los turnos anotados a mano")
 
+    print("\n11. Estructura del backend real (para que no se repita un error de orden)")
+
+    import pathlib as _pathlib
+
+    raiz = _pathlib.Path(__file__).resolve().parent.parent
+    codigo_real = (raiz / "tools" / "appsscript" / "Code.gs").read_text(encoding="utf-8")
+    backend_falso = (raiz / "tools" / "mock-turnos.py").read_text(encoding="utf-8")
+
+    def entre(texto: str, inicio: str, fin: str) -> str:
+        desde = texto.find(inicio)
+        return texto[desde:desde + fin] if desde > -1 else ""
+
+    do_post_real = entre(codigo_real, "function doPost(e) {", 1800)
+    verificar("ACCIONES_ADMIN.indexOf(accion)" in do_post_real,
+              "el backend real atiende las acciones del panel en doPost")
+    posicion_panel = do_post_real.find("ACCIONES_ADMIN.indexOf(accion)")
+    posicion_clave = do_post_real.find("exigirClave_(cuerpo.clave)")
+    verificar(posicion_clave > posicion_panel,
+              "el panel se atiende ANTES de exigir la clave publica (bug que rompia el panel)")
+    verificar("clave_admin_invalida" in codigo_real,
+              "el backend real responde clave_admin_invalida cuando la clave del panel es mala")
+
+    import re as _re
+
+    acciones_reales = set(_re.findall(r"""["']([a-z]+)["']""",
+                                     entre(codigo_real, "var ACCIONES_ADMIN = [", 200)))
+    acciones_falsas = set(_re.findall(r"""["']([a-z]+)["']""",
+                                     entre(backend_falso, "ACCIONES_ADMIN = [", 200)))
+    for nombre_accion in ["panel", "buscar", "anotar", "listo", "estado"]:
+        verificar(nombre_accion in acciones_reales,
+                  "el backend real acepta la accion de panel '" + nombre_accion + "'")
+    verificar(acciones_reales == acciones_falsas and acciones_reales,
+              "el mock y el backend real manejan las mismas acciones de panel")
+
+    do_post_falso = entre(backend_falso, "def do_POST(self)", 900)
+    verificar(do_post_falso.find("ACCIONES_ADMIN") < do_post_falso.find('CONFIG["clave"]'),
+              "el mock tambien atiende el panel antes de la clave publica")
+
     fallas = [descripcion for ok, descripcion in RESULTADOS if not ok]
     print(f"\nRESULTADO: {len(RESULTADOS) - len(fallas)}/{len(RESULTADOS)} pruebas OK")
     for falla in fallas:
