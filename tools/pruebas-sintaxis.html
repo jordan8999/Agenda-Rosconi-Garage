@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es-UY">
+<head>
+  <meta charset="utf-8">
+  <title>Verificación de sintaxis (desarrollo)</title>
+  <style>
+    body { font: 13px/1.6 ui-monospace, monospace; background: #111; color: #eee; padding: 16px; }
+    pre { white-space: pre-wrap; background: #000; padding: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Sintaxis de los scripts</h1>
+  <p>Compila cada archivo con el parser de JavaScript del navegador sin ejecutarlo.
+     Sirve sobre todo para <code>tools/appsscript/Code.gs</code>, que no se puede
+     correr en local porque depende de las APIs de Google.</p>
+  <pre id="salida">verificando…</pre>
+  <script>
+    (function () {
+      "use strict";
+      var archivos = [
+        "../assets/js/main.js",
+        "../assets/js/booking.js",
+        "../tools/appsscript/Code.gs"
+      ];
+      var lineas = [];
+      var salida = document.getElementById("salida");
+
+      function revisar(archivo) {
+        return fetch(archivo, { cache: "no-store" })
+          .then(function (respuesta) { return respuesta.text(); })
+          .then(function (texto) {
+            try {
+              new Function(texto);
+              lineas.push("OK     " + archivo + " (" + texto.split("\n").length + " líneas)");
+            } catch (error) {
+              lineas.push("FALLA  " + archivo + " → " + error.message);
+            }
+          })
+          .catch(function () {
+            lineas.push("FALLA  no se pudo leer " + archivo);
+          });
+      }
+
+      var cadena = Promise.resolve();
+      archivos.forEach(function (archivo) {
+        cadena = cadena.then(function () { return revisar(archivo); });
+      });
+      cadena.then(function () {
+        var fallas = lineas.filter(function (linea) { return linea.indexOf("FALLA") === 0; });
+        lineas.push("");
+        lineas.push("RESULTADO: " + (lineas.length - fallas.length - 1) + " OK / " + fallas.length + " FALLA(S)");
+        salida.textContent = lineas.join("\n");
+        salida.setAttribute("data-estado", fallas.length ? "FALLA" : "OK");
+      });
+    })();
+  </script>
+</body>
+</html>

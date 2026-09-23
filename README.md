@@ -31,6 +31,7 @@ reservados** con una agenda propia (Google Calendar + Google Apps Script, sin pl
    ├─ mock-turnos.py          # Backend falso para probar en local (mismo contrato)
    ├─ pruebas-turnos.py       # 32 pruebas del contrato de reservas (mock o producción)
    ├─ pruebas-ui.html         # Pruebas de integración manejando el sitio en un navegador
+   ├─ pruebas-sintaxis.html   # Compila los scripts con el parser del navegador
    ├─ diagnostico-desborde.html # Mide desborde horizontal en 320–1440 px
    ├─ optimize-images.py      # Pipeline de imágenes (Pillow)
    ├─ fetch-font.py           # Descarga la tipografía display una sola vez
@@ -121,6 +122,12 @@ python -m http.server 8125         # sitio; después abrir tools/pruebas-ui.html
 `tools/pruebas-ui.html` maneja el sitio real dentro de un iframe (abrir la agenda, elegir día y
 hora, confirmar, consultar y cancelar) contra el mock. Para apuntar el sitio al mock, agregar
 `?turnos=http://127.0.0.1:8130` a la URL (por seguridad solo se aceptan direcciones locales).
+
+Otros dos verificadores de desarrollo, también desde el servidor local:
+
+- `tools/pruebas-sintaxis.html` — compila `main.js`, `booking.js` y `Code.gs` con el parser del
+  navegador (útil porque `Code.gs` no se puede ejecutar en local).
+- `tools/diagnostico-desborde.html` — mide desborde horizontal del sitio en 320 a 1440 px.
 
 ## Lo que hay que mantener al día
 
