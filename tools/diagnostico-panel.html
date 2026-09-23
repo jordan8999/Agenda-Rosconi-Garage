@@ -62,8 +62,10 @@
           var ingreso = doc.querySelector("[data-panel-ingreso]");
           var aviso = doc.querySelector("[data-panel-aviso]");
           var texto = (aviso && aviso.textContent) || "";
+          var tipo = (aviso && aviso.getAttribute("data-tipo")) || "";
+          var esperando = texto.indexOf("Cargando") > -1 || texto.indexOf("Verificando") > -1;
 
-          if (texto && texto.indexOf("Cargando") === -1) {
+          if (texto && !esperando && (tipo === "error" || tipo === "ok")) {
             escribir("   Respuesta: " + texto);
             escribir("   Vuelve al ingreso para reintentar: " +
               (!ingreso.hidden ? "sí" : "no"));
@@ -71,9 +73,10 @@
             if (texto.indexOf("no es válida") > -1 && !ingreso.hidden) {
               escribir("CONCLUSIÓN: el backend tiene el panel y rechaza bien la clave.");
               escribir("Ya se puede entrar con la clave real del panel.");
-            } else if (/clave de instalacion/i.test(texto)) {
+            } else if (/clave de instalacion|todavía no tiene el panel/i.test(texto)) {
               escribir("CONCLUSIÓN: el backend desplegado es la versión ANTERIOR (sin panel).");
-              escribir("Falta pegar Code.gs en Apps Script e implementar una versión nueva.");
+              escribir("Revisá que el archivo pegado sea el nuevo, que haya un solo Code.gs");
+              escribir("y que al implementar hayas elegido Versión: Nueva versión.");
             } else {
               escribir("CONCLUSIÓN: respuesta inesperada; revisar el registro de Apps Script.");
             }
