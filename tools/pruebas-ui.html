@@ -12,7 +12,9 @@
 <body>
   <h1>Pruebas de integración — reserva de turnos</h1>
   <p>Solo para desarrollo: carga el sitio real en un iframe y lo maneja como una persona,
-     contra el mock local (<code>python tools/mock-turnos.py --puerto 8131</code>).</p>
+     contra el mock local (<code>python tools/mock-turnos.py --puerto 8131</code>).
+     Con <code>?real</code> corre contra el backend desplegado: crea un turno de verdad en el
+     calendario del taller y lo cancela al final del recorrido.</p>
 
   <iframe id="marco" title="Sitio bajo prueba"></iframe>
   <pre id="resultado">EJECUTANDO…</pre>
@@ -62,6 +64,9 @@
       if (leido && /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(leido)) {
         parametroMock = leido;
       }
+      // Con ?real la prueba corre contra el backend desplegado: agenda y
+      // calendario de verdad (crea un turno y lo cancela al final).
+      var contraBackendReal = new URLSearchParams(window.location.search).has("real");
 
       marco.addEventListener("load", function () {
         var doc = marco.contentDocument;
@@ -218,7 +223,9 @@
           });
       });
 
-      marco.src = "../index.html?turnos=" + encodeURIComponent(parametroMock);
+      marco.src = contraBackendReal
+        ? "../index.html"
+        : "../index.html?turnos=" + encodeURIComponent(parametroMock);
     })();
   </script>
 </body>

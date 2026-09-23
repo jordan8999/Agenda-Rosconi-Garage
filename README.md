@@ -32,6 +32,7 @@ reservados** con una agenda propia (Google Calendar + Google Apps Script, sin pl
    ├─ pruebas-turnos.py       # 39 pruebas del contrato de reservas (mock o backend real)
    ├─ pruebas-ui.html         # Pruebas de integración manejando el sitio en un navegador
    ├─ pruebas-sintaxis.html   # Compila los scripts con el parser del navegador
+   ├─ diagnostico-endpoint.html # Consulta el backend real desde el navegador
    ├─ diagnostico-desborde.html # Mide desborde horizontal en 320–1440 px
    ├─ optimize-images.py      # Pipeline de imágenes (Pillow)
    ├─ fetch-font.py           # Descarga la tipografía display una sola vez
@@ -135,7 +136,12 @@ Otros dos verificadores de desarrollo, también desde el servidor local:
 
 - `tools/pruebas-sintaxis.html` — compila `main.js`, `booking.js` y `Code.gs` con el parser del
   navegador (útil porque `Code.gs` no se puede ejecutar en local).
+- `tools/diagnostico-endpoint.html` — consulta el backend desde el navegador (igual que el sitio)
+  y muestra la respuesta cruda: sirve para confirmar que la app web quedó accesible desde internet.
 - `tools/diagnostico-desborde.html` — mide desborde horizontal del sitio en 320 a 1440 px.
+
+Con `tools/pruebas-ui.html?real` la prueba de integración corre contra el **backend desplegado**
+en vez del mock: crea un turno real en el calendario del taller y lo cancela al final.
 
 ## Lo que hay que mantener al día
 

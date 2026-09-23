@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es-UY">
+<head>
+  <meta charset="utf-8">
+  <title>Verificación del backend de turnos</title>
+  <style>
+    body { font: 14px/1.6 system-ui, sans-serif; background: #111; color: #eee; margin: 0; padding: 20px; }
+    pre { white-space: pre-wrap; background: #000; padding: 14px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Verificación del backend de turnos</h1>
+  <p>Consulta el backend tal como lo hace el sitio (mismo endpoint, misma clave, mismo
+     navegador) y muestra la respuesta cruda. Sirve para confirmar que la app web de Apps
+     Script queda accesible desde internet. Se ejecuta desde el servidor local:
+     <code>python -m http.server 8125</code> y después abrir
+     <code>tools/diagnostico-endpoint.html</code>.</p>
+  <pre id="salida">consultando…</pre>
+
+  <script>
+    (function () {
+      "use strict";
+      var salida = document.getElementById("salida");
+      var lineas = [];
+
+      function escribir(texto) {
+        lineas.push(texto);
+        salida.textContent = lineas.join("\n");
+      }
+
+      function leerAjustes() {
+        return fetch("../assets/js/booking.js", { cache: "no-store" })
+          .then(function (respuesta) { return respuesta.text(); })
+          .then(function (codigo) {
+            var endpoint = codigo.match(/ENDPOINT:\s*\n?\s*"([^"]+)"/);
+            var clave = codigo.match(/CLAVE:\s*"([^"]+)"/);
+            return {
+              endpoint: endpoint ? endpoint[1] : "",
+              clave: clave ? clave[1] : ""
+            };
+          });
+      }
+
+      function probar(rotulo, url) {
+        var inicio = Date.now();
+        return fetch(url, { cache: "no-store" })
+          .then(function (respuesta) {
+            return respuesta.text().then(function (cuerpo) {
+              escribir("OK     " + rotulo + " | HTTP " + respuesta.status +
+                " | " + (Date.now() - inicio) + " ms");
+              escribir("       " + cuerpo.trim().slice(0, 200));
+            });
+          })
+          .catch(function (error) {
+            escribir("FALLA  " + rotulo + " | " + error.message +
+              " (" + (Date.now() - inicio) + " ms)");
+          });
+      }
+
+      leerAjustes()
+        .then(function (ajustes) {
+          if (!ajustes.endpoint) {
+            escribir("FALLA  ENDPOINT vacío en assets/js/booking.js");
+            return;
+          }
+          escribir("endpoint: " + ajustes.endpoint);
+          escribir("clave: " + (ajustes.clave ? ajustes.clave.slice(0, 8) + "…" : "(vacía)"));
+          escribir("");
+          var base = ajustes.endpoint +
+            (ajustes.endpoint.indexOf("?") > -1 ? "&" : "?") +
+            "clave=" + encodeURIComponent(ajustes.clave);
+          return probar("ping", base + "&action=ping")
+            .then(function () {
+              return probar("agenda", base + "&action=agenda&dias=7");
+            })
+            .then(function () {
+              escribir("");
+              escribir("fin de la verificación");
+            });
+        })
+        .catch(function (error) {
+          escribir("FALLA  " + error.message);
+        });
+    })();
+  </script>
+</body>
+</html>
