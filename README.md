@@ -29,7 +29,7 @@ reservados** con una agenda propia (Google Calendar + Google Apps Script, sin pl
 └─ tools/
    ├─ appsscript/             # Backend de turnos (Code.gs + appsscript.json + guía)
    ├─ mock-turnos.py          # Backend falso para probar en local (mismo contrato)
-   ├─ pruebas-turnos.py       # 39 pruebas del contrato de reservas (mock o backend real)
+   ├─ pruebas-turnos.py       # 45 pruebas del contrato de reservas (mock o backend real)
    ├─ pruebas-ui.html         # Pruebas de integración manejando el sitio en un navegador
    ├─ pruebas-sintaxis.html   # Compila los scripts con el parser del navegador
    ├─ diagnostico-endpoint.html # Consulta el backend real desde el navegador
@@ -97,6 +97,7 @@ calendario roto: nunca hay un callejón sin salida.
 | Anticipación mínima | 24 h |
 | Agenda abierta | 30 días |
 | Intervalo entre turnos | 30 min |
+| Límite antiabuso | 2 reservas por teléfono y 12 por día (se libera al cancelar) |
 | Cerrar un día (feriado) | evento de todo el día en el calendario |
 
 El cliente **nunca** elige línea ni herramienta: ve "varios horarios" o "último lugar". La línea que
@@ -124,7 +125,7 @@ el trabajo).
 
 ```powershell
 python tools/mock-turnos.py        # backend falso en http://127.0.0.1:8130
-python tools/pruebas-turnos.py     # 39 pruebas del contrato (cupos, horarios, cancelación)
+python tools/pruebas-turnos.py     # 45 pruebas del contrato (cupos, límites, cancelación)
 python -m http.server 8125         # sitio; después abrir tools/pruebas-ui.html
 ```
 

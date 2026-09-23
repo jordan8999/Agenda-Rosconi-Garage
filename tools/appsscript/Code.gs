@@ -457,6 +457,22 @@ function contarReserva_(telefono) {
   cache.put(claveTelefono, String(Number(cache.get(claveTelefono) || 0) + 1), 21600);
 }
 
+/**
+ * Libera el cupo antiabuso del telefono cuando el cliente cancela: si no,
+ * alguien que cancela y quiere reservar de nuevo queda frenado 6 horas.
+ */
+function restarReserva_(telefono) {
+  if (!telefono) {
+    return;
+  }
+  var cache = CacheService.getScriptCache();
+  var claveTelefono = 'reservas-tel:' + telefono;
+  var actual = Number(cache.get(claveTelefono) || 0);
+  if (actual > 0) {
+    cache.put(claveTelefono, String(actual - 1), 21600);
+  }
+}
+
 function crearReserva_(datos) {
   // Campo trampa: si viene completo es un bot. Se ignora sin dar pistas.
   if (String(datos.empresa || '').trim() !== '') {
@@ -466,11 +482,6 @@ function crearReserva_(datos) {
   var validacion = validarReserva_(datos);
   if (!validacion.ok) {
     return validacion;
-  }
-
-  var aviso = avisoLimite_(validacion.telefono);
-  if (aviso) {
-    return error_('limite_alcanzado', aviso);
   }
 
   var lock = LockService.getScriptLock();
@@ -507,6 +518,14 @@ function crearReserva_(datos) {
 
     if (ocupados >= CONFIG.CUPOS) {
       return error_('sin_cupo', 'Ese horario se acaba de ocupar. Elegí otro, por favor.');
+    }
+
+    // Limites antiabuso (por dia y por telefono). Van despues de reconocer un
+    // reintento: si el cliente repite un turno que ya existe, tiene que recibir
+    // su codigo aunque haya alcanzado el limite.
+    var aviso = avisoLimite_(validacion.telefono);
+    if (aviso) {
+      return error_('limite_alcanzado', aviso);
     }
 
     // Linea interna del taller: el cliente nunca la ve.
@@ -605,6 +624,12 @@ function codigoDeEvento_(evento) {
   return encontrado ? encontrado[1] : 'RG-XXXXXXXX';
 }
 
+/** Telefono anotado en un evento de turno (para liberar el limite al cancelar). */
+function telefonoDeEvento_(evento) {
+  var encontrado = String(evento.getDescription() || '').match(/Teléfono: (\d{8,13})/);
+  return encontrado ? encontrado[1] : '';
+}
+
 function buscarPorCodigo_(codigo) {
   var buscado = String(codigo || '').trim().toUpperCase();
   if (!/^RG-[A-Z0-9]{8}$/.test(buscado)) {
@@ -658,7 +683,9 @@ function cancelarReserva_(cuerpo) {
       return error_('no_encontrado', 'No encontramos un turno con ese código.');
     }
     var datos = datosDeEvento_(evento, codigo);
+    var telefono = telefonoDeEvento_(evento);
     evento.deleteEvent();
+    restarReserva_(telefono);
     invalidarAgenda_();
     datos.mensaje = 'El turno del ' + datos.etiqueta + ' a las ' + datos.hora + ' quedó cancelado.';
     return datos;

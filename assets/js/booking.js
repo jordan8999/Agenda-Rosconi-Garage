@@ -19,7 +19,12 @@
     SERVICIO_PREDETERMINADO: "Service completo y lubricentro",
     DIAS: 30,
     CACHE_MS: 60000,
-    TIMEOUT_MS: 15000
+    TIMEOUT_MS: 15000,
+    // Apps Script falla de forma esporádica en el redirect de su respuesta: se
+    // reintenta con una pequeña espera. Reintentar una reserva no la duplica,
+    // porque el backend devuelve el turno que ya existe si el envío llegó.
+    INTENTOS: 3,
+    ESPERA_REINTENTO_MS: 600
   };
 
   var WHATSAPP = "59891317613";
@@ -106,7 +111,8 @@
   }
 
   /* ------------------------------------------------------------------- red */
-  function pedir(ruta, cuerpo, segundoIntento) {
+  function pedir(ruta, cuerpo, intento) {
+    var numero = intento || 1;
     var controlador = typeof AbortController === "function" ? new AbortController() : null;
     var temporizador = window.setTimeout(function () {
       if (controlador) {
@@ -134,8 +140,12 @@
       })
       .catch(function (error) {
         window.clearTimeout(temporizador);
-        if (!segundoIntento) {
-          return pedir(ruta, cuerpo, true);
+        if (numero < AJUSTES.INTENTOS) {
+          return new Promise(function (listo) {
+            window.setTimeout(listo, AJUSTES.ESPERA_REINTENTO_MS * numero);
+          }).then(function () {
+            return pedir(ruta, cuerpo, numero + 1);
+          });
         }
         throw error;
       });
@@ -166,7 +176,7 @@
       "&servicio=" + encodeURIComponent(estado.servicio || "") +
       "&dias=" + AJUSTES.DIAS;
 
-    pedir(consulta, null, false)
+    pedir(consulta, null)
       .then(function (datos) {
         if (!datos || datos.ok !== true) {
           throw new Error((datos && datos.mensaje) || "No pudimos leer la agenda.");
@@ -241,7 +251,15 @@
       return dia.turnos && dia.turnos.length;
     });
     if (!utiles.length) {
-      anunciar("No hay días con turnos en las próximas semanas. Escribinos por WhatsApp.", "aviso");
+      anunciar("No hay horarios libres en las próximas semanas para este trabajo.", "aviso");
+      // Se ofrece el WhatsApp sin esconder el selector: el cliente puede probar
+      // con otro trabajo o pedir el turno por WhatsApp, pero nunca queda con un
+      // cuadro vacío y sin salida.
+      mostrarRespaldo(
+        "Para este trabajo no hay horarios libres en las próximas semanas. " +
+        "Probá eligiendo otro trabajo o pedilo por WhatsApp y lo coordinamos.",
+        true
+      );
       return;
     }
     utiles.forEach(function (dia) {
@@ -315,16 +333,20 @@
   }
 
   /* -------------------------------------------------- respaldo por WhatsApp */
-  function mostrarRespaldo(mensaje) {
+  function mostrarRespaldo(mensaje, mantenerPanel) {
     if (!refs.respaldo) {
       return;
     }
-    refs.panel.hidden = true;
+    // Con mantenerPanel el selector de trabajo queda a la vista, así el cliente
+    // puede probar con otro servicio en vez de cerrar el cuadro.
+    refs.panel.hidden = !mantenerPanel;
     refs.respaldo.hidden = false;
     if (refs.respaldoTexto && mensaje) {
       refs.respaldoTexto.textContent = mensaje;
     }
-    anunciar("");
+    if (!mantenerPanel) {
+      anunciar("");
+    }
   }
 
   function textoWhatsApp(datos) {
@@ -514,7 +536,7 @@
 
     refs.enviar.disabled = true;
     anunciar("Confirmando el turno…", "cargando");
-    pedir("", datos, false)
+    pedir("", datos)
       .then(function (respuesta) {
         if (!respuesta || respuesta.ok !== true) {
           throw new Error((respuesta && respuesta.mensaje) || "No pudimos confirmar el turno.");
@@ -543,7 +565,7 @@
       return;
     }
     mostrarGestion("Buscando el turno…", "cargando");
-    pedir("", { accion: "consultar", clave: AJUSTES.CLAVE, codigo: codigo }, false)
+    pedir("", { accion: "consultar", clave: AJUSTES.CLAVE, codigo: codigo })
       .then(function (respuesta) {
         if (!respuesta || respuesta.ok !== true) {
           throw new Error((respuesta && respuesta.mensaje) || "No encontramos ese código.");
@@ -562,9 +584,14 @@
       return;
     }
     mostrarGestion("Cancelando…", "cargando");
-    pedir("", { accion: "cancelar", clave: AJUSTES.CLAVE, codigo: codigo }, false)
+    pedir("", { accion: "cancelar", clave: AJUSTES.CLAVE, codigo: codigo })
       .then(function (respuesta) {
         if (!respuesta || respuesta.ok !== true) {
+          // Puede pasar si el primer intento sí canceló y se perdió la
+          // respuesta: el reintento ya no encuentra el turno.
+          if (respuesta && respuesta.error === "no_encontrado") {
+            throw new Error("Ese código no tiene un turno activo: puede que ya esté cancelado.");
+          }
           throw new Error((respuesta && respuesta.mensaje) || "No pudimos cancelar el turno.");
         }
         olvidarCache();

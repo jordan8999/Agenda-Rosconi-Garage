@@ -57,6 +57,28 @@
           });
       }
 
+      function probarPost(rotulo, url, cuerpo) {
+        var inicio = Date.now();
+        return fetch(url, {
+          method: "POST",
+          mode: "cors",
+          cache: "no-store",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(cuerpo)
+        })
+          .then(function (respuesta) {
+            return respuesta.text().then(function (texto) {
+              escribir("OK     " + rotulo + " | HTTP " + respuesta.status +
+                " | " + (Date.now() - inicio) + " ms");
+              escribir("       " + texto.trim().slice(0, 200));
+            });
+          })
+          .catch(function (error) {
+            escribir("FALLA  " + rotulo + " | " + error.message +
+              " (" + (Date.now() - inicio) + " ms)");
+          });
+      }
+
       leerAjustes()
         .then(function (ajustes) {
           if (!ajustes.endpoint) {
@@ -72,6 +94,22 @@
           return probar("ping", base + "&action=ping")
             .then(function () {
               return probar("agenda", base + "&action=agenda&dias=7");
+            })
+            .then(function () {
+              // Envío de prueba con datos incompletos: el backend lo rechaza
+              // sin crear ningún evento. Sirve para comprobar que la reserva
+              // (POST) funciona igual que la lectura.
+              return probarPost("reserva (envío de prueba)", ajustes.endpoint, {
+                accion: "crear",
+                clave: ajustes.clave,
+                fecha: "2030-01-01",
+                hora: "09:00",
+                nombre: "",
+                telefono: "099123456",
+                vehiculo: "VW Gol",
+                servicio: "Service completo y lubricentro",
+                empresa: ""
+              });
             })
             .then(function () {
               escribir("");

@@ -148,7 +148,9 @@
           })
           .then(function () {
             doc.getElementById("reserva-nombre").value = "Prueba Integracion";
-            doc.getElementById("reserva-telefono").value = "099123456";
+            // Teléfono distinto en cada corrida: el backend limita a 2 turnos
+            // por teléfono y si no, la segunda prueba quedaría frenada.
+            doc.getElementById("reserva-telefono").value = "09" + String(Date.now()).slice(-7);
             doc.getElementById("reserva-vehiculo").value = "Fiat Uno 2010";
             doc.querySelector("[data-reserva-form]").dispatchEvent(
               new win.Event("submit", { bubbles: true, cancelable: true })
@@ -196,6 +198,22 @@
             }, "al reabrir el dialogo se muestra la agenda actualizada");
           })
           .then(function () {
+            // Trabajo largo (480 min) que no entra en una franja de atención: el
+            // cliente tiene que ver la explicación y el WhatsApp, nunca un cuadro
+            // vacío sin salida.
+            var seleccion = doc.querySelector("[data-reserva-servicio]");
+            seleccion.value = "Distribución y cadena";
+            seleccion.dispatchEvent(new win.Event("change"));
+            return esperar(function () {
+              var respaldo = doc.querySelector("[data-reserva-respaldo]");
+              var texto = doc.querySelector("[data-reserva-respaldo-texto]");
+              return !respaldo.hidden && texto.textContent.length > 20 &&
+                doc.getElementById("reserva").open;
+            }, "sin horarios para un trabajo largo, se avisa y se ofrece el WhatsApp");
+          })
+          .then(function () {
+            registrar(!doc.querySelector("[data-reserva-panel]").hidden,
+                      "el cliente sigue pudiendo elegir otro trabajo");
             var fallas = lineas.filter(function (linea) {
               return linea.indexOf("FALLA") === 0;
             });

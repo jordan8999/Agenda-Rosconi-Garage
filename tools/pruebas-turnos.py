@@ -221,6 +221,41 @@ def main() -> int:
     verificar(agenda_de(url, "Servicio completo y lubricentro").get("ok") is True,
               "la agenda sigue respondiendo despues de la limpieza")
 
+    print("\n7. Limites antiabuso y liberacion al cancelar")
+    libres = []
+    for dia in agenda_de(url)["dias"]:
+        for turno in dia["turnos"]:
+            if turno["estado"] == "libre":
+                libres.append((dia["fecha"], turno["hora"]))
+        if len(libres) >= 3:
+            break
+    verificar(len(libres) >= 3, "hay al menos 3 horarios libres para probar el limite")
+    if len(libres) < 3:
+        return 1
+
+    telefono = "099555111"
+    propios = []
+    for numero, (dia, hora) in enumerate(libres[:2], start=1):
+        reserva = pedir(url, "/", datos_reserva(fecha=dia, hora=hora, nombre="Limite Prueba",
+                                                telefono=telefono))
+        verificar(reserva.get("ok") is True, f"turno {numero} del mismo telefono se acepta")
+        propios.append(reserva.get("codigo", ""))
+
+    frenado = pedir(url, "/", datos_reserva(fecha=libres[2][0], hora=libres[2][1],
+                                           nombre="Limite Prueba", telefono=telefono))
+    verificar(frenado.get("error") == "limite_alcanzado",
+              "el tercer turno del mismo telefono se frena")
+
+    verificar(pedir(url, "/", {"accion": "cancelar", "clave": CLAVE,
+                               "codigo": propios[0]}).get("ok") is True,
+              "se cancela uno de los dos turnos")
+    liberado = pedir(url, "/", datos_reserva(fecha=libres[2][0], hora=libres[2][1],
+                                             nombre="Limite Prueba", telefono=telefono))
+    verificar(liberado.get("ok") is True, "al cancelar se libera el cupo del telefono")
+
+    for pendiente in propios[1:] + [liberado.get("codigo", "")]:
+        pedir(url, "/", {"accion": "cancelar", "clave": CLAVE, "codigo": pendiente})
+
     fallas = [descripcion for ok, descripcion in RESULTADOS if not ok]
     print(f"\nRESULTADO: {len(RESULTADOS) - len(fallas)}/{len(RESULTADOS)} pruebas OK")
     for falla in fallas:

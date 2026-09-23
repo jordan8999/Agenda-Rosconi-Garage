@@ -25,6 +25,8 @@ CONFIG = {
     "anticipacion_min": 1440,
     "dias_vista": 30,
     "cupos": 2,
+    "max_reservas_por_dia": 12,
+    "max_reservas_por_telefono": 2,
     # Claves = dia de la semana de Python: lunes 0 ... domingo 6
     "atencion": {
         0: [("08:00", "12:00"), ("14:00", "18:00")],
@@ -55,6 +57,30 @@ MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
 RESERVAS: list[dict] = []
 CERRADOS: set[str] = set()
 SEMILLA = {"valor": 0}
+# Contadores antiabuso en memoria (mismo criterio que tools/appsscript/Code.gs)
+CONTADORES: dict[str, dict] = {"dia": {}, "telefono": {}}
+
+
+def aviso_limite(telefono: str) -> str | None:
+    hoy = datetime.now().date().isoformat()
+    if CONTADORES["dia"].get(hoy, 0) >= CONFIG["max_reservas_por_dia"]:
+        return "Hoy ya alcanzamos el máximo de turnos por la web. Escribinos por WhatsApp y lo vemos."
+    if CONTADORES["telefono"].get(telefono, 0) >= CONFIG["max_reservas_por_telefono"]:
+        return "Ya registramos reservas con este teléfono. Si necesitás otro turno, escribinos por WhatsApp."
+    return None
+
+
+def contar_reserva(telefono: str) -> None:
+    hoy = datetime.now().date().isoformat()
+    CONTADORES["dia"][hoy] = CONTADORES["dia"].get(hoy, 0) + 1
+    CONTADORES["telefono"][telefono] = CONTADORES["telefono"].get(telefono, 0) + 1
+
+
+def restar_reserva(telefono: str) -> None:
+    """Al cancelar se libera el cupo del telefono (si no, no podria reservar de nuevo)."""
+    if not telefono:
+        return
+    CONTADORES["telefono"][telefono] = max(CONTADORES["telefono"].get(telefono, 1) - 1, 0)
 
 
 def etiqueta(fecha: datetime) -> str:
@@ -193,12 +219,16 @@ def crear(cuerpo: dict) -> dict:
         }
     if usados >= CONFIG["cupos"]:
         return {"ok": False, "error": "sin_cupo", "mensaje": "Ese horario se acaba de ocupar."}
+    aviso = aviso_limite(telefono)
+    if aviso:
+        return {"ok": False, "error": "limite_alcanzado", "mensaje": aviso}
     nuevo = codigo()
     RESERVAS.append({
         "codigo": nuevo, "inicio": inicio, "fin": fin,
         "nombre": str(cuerpo.get("nombre", "")), "telefono": telefono,
         "vehiculo": str(cuerpo.get("vehiculo", "")), "servicio": elegido["nombre"],
     })
+    contar_reserva(telefono)
     return {
         "ok": True, "codigo": nuevo,
         "estado": "libre" if usados == 0 else "ultimo",
@@ -238,6 +268,7 @@ def cancelar(cuerpo: dict) -> dict:
         return {"ok": False, "error": "no_encontrado", "mensaje": "No encontramos ese código."}
     datos = consultar(cuerpo)
     RESERVAS.remove(reserva)
+    restar_reserva(reserva.get("telefono", ""))
     datos["mensaje"] = f"El turno del {datos['etiqueta']} a las {datos['hora']} quedó cancelado."
     return datos
 
