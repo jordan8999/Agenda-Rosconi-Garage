@@ -11,10 +11,11 @@
   "use strict";
 
   var AJUSTES = {
-    // Pegar acá la URL de la app web de Apps Script (termina en /exec)
-    ENDPOINT: "",
+    // URL de la app web de Apps Script del taller (termina en /exec)
+    ENDPOINT:
+      "https://script.google.com/macros/s/AKfycbzxCse_fzz1IVtt1Mr2Z-3ca6ZNRegrAp_6Y6LU0-4UGcUfyFB5ihTf5bYrtOx8LxAV0g/exec",
     // Debe coincidir con CONFIG.CLAVE de tools/appsscript/Code.gs
-    CLAVE: "rosconi-cambiar-esta-clave-2026",
+    CLAVE: "rosconi-artigas-turnos-2026-k72b",
     SERVICIO_PREDETERMINADO: "Service completo y lubricentro",
     DIAS: 30,
     CACHE_MS: 60000,

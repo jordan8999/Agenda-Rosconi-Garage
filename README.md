@@ -29,7 +29,7 @@ reservados** con una agenda propia (Google Calendar + Google Apps Script, sin pl
 └─ tools/
    ├─ appsscript/             # Backend de turnos (Code.gs + appsscript.json + guía)
    ├─ mock-turnos.py          # Backend falso para probar en local (mismo contrato)
-   ├─ pruebas-turnos.py       # 32 pruebas del contrato de reservas (mock o producción)
+   ├─ pruebas-turnos.py       # 39 pruebas del contrato de reservas (mock o backend real)
    ├─ pruebas-ui.html         # Pruebas de integración manejando el sitio en un navegador
    ├─ pruebas-sintaxis.html   # Compila los scripts con el parser del navegador
    ├─ diagnostico-desborde.html # Mide desborde horizontal en 320–1440 px
@@ -78,11 +78,11 @@ La puesta en marcha (5 minutos, una sola vez) está paso a paso en `tools/appssc
 
 ### Conectar el sitio con el backend
 
-En `assets/js/booking.js`:
+En `assets/js/booking.js` ya están puestos los datos de la app web del taller:
 
 ```js
-ENDPOINT: "https://script.google.com/macros/s/XXXX/exec",  // URL de la app web
-CLAVE: "rosconi-cambiar-esta-clave-2026",                  // igual a CONFIG.CLAVE del script
+ENDPOINT: "https://script.google.com/macros/s/..../exec",  // app web publicada
+CLAVE: "rosconi-artigas-turnos-2026-k72b",                 // igual a CONFIG.CLAVE del script
 ```
 
 Si `ENDPOINT` queda vacío, el sitio ofrece la reserva por WhatsApp en lugar de mostrar un
@@ -101,6 +101,14 @@ calendario roto: nunca hay un callejón sin salida.
 El cliente **nunca** elige línea ni herramienta: ve "varios horarios" o "último lugar". La línea que
 corresponde queda anotada en el título del evento (`Turno ELEVADOR · Golf`) solo para uso interno.
 
+Si un cliente toca dos veces "Confirmar" (o se le corta la conexión justo al confirmar), el backend
+reconoce el mismo teléfono en el mismo horario y devuelve **el turno que ya existe**: un reintento
+nunca duplica el evento ni ocupa el segundo lugar. Para verificar a mano el backend desplegado:
+
+```powershell
+python tools/pruebas-turnos.py --url https://script.google.com/macros/s/XXXX/exec --clave TU_CLAVE
+```
+
 Todos los caminos abren el **mismo** cuadro de reserva: el botón del hero, el del menú, el de la
 sección de turnos y el `data-servicio="..."` de cada tarjeta de servicio (que además preselecciona
 el trabajo).
@@ -115,7 +123,7 @@ el trabajo).
 
 ```powershell
 python tools/mock-turnos.py        # backend falso en http://127.0.0.1:8130
-python tools/pruebas-turnos.py     # 32 pruebas del contrato (cupos, horarios, cancelación)
+python tools/pruebas-turnos.py     # 39 pruebas del contrato (cupos, horarios, cancelación)
 python -m http.server 8125         # sitio; después abrir tools/pruebas-ui.html
 ```
 
@@ -137,6 +145,10 @@ Otros dos verificadores de desarrollo, también desde el servidor local:
   `FAQPage` (preguntas frecuentes). Deben reflejar el texto visible.
 - **Datos desde el móvil:** el botón flotante de WhatsApp y el de "cómo llegar" usan las coordenadas
   `-30.4066293,-56.4605533`.
+- **Backend de turnos:** si se edita `tools/appsscript/Code.gs`, hay que pegar el archivo en el
+  proyecto de Apps Script y **reimplementar** (*Implementar > Administrar implementaciones > nueva
+  versión*); la URL `/exec` no cambia. Si quedaron turnos de prueba, se borran ejecutando
+  `limpiarPruebas` desde el editor.
 - **URL canónica:** si algún día se usa un dominio propio, hay que reemplazar
   `https://jordanweb2016.github.io/Rosconi-Garage/` en `index.html` (canonical, Open Graph, JSON-LD),
   `sitemap.xml` y `robots.txt`, y crear el archivo `CNAME`.

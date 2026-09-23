@@ -43,7 +43,7 @@ var CONFIG = {
 
   // Clave que viaja en cada pedido desde la web. Frena bots casuales.
   // Si la cambias aca, cambiala igual en assets/js/booking.js
-  CLAVE: 'rosconi-cambiar-esta-clave-2026',
+  CLAVE: 'rosconi-artigas-turnos-2026-k72b',
 
   // Franjas de atencion por dia de la semana (0 = domingo ... 6 = sabado)
   ATENCION: {
@@ -483,6 +483,28 @@ function crearReserva_(datos) {
     // mismo ultimo lugar al mismo tiempo.
     var eventos = calendario_().getEvents(validacion.inicio, validacion.fin);
     var ocupados = ocupacion_(eventos, validacion.inicio, validacion.fin);
+
+    // Reintento del mismo cliente (se corto la conexion justo despues de
+    // confirmar, o toco dos veces el boton): se devuelve el turno que ya
+    // existe en lugar de ocupar el segundo lugar o duplicar el evento.
+    var repetido = turnoRepetido_(eventos, validacion);
+    if (repetido) {
+      return {
+        ok: true,
+        repetido: true,
+        codigo: codigoDeEvento_(repetido),
+        estado: ocupados > 0 ? 'ultimo' : 'libre',
+        cuposLibres: Math.max(CONFIG.CUPOS - ocupados, 0),
+        fecha: validacion.fechaTexto,
+        hora: validacion.horaTexto,
+        etiqueta: etiquetaDia_(validacion.inicio),
+        servicio: validacion.servicio.nombre,
+        duracionMinutos: validacion.servicio.minutos,
+        mensaje: 'Ese turno ya estaba confirmado para el ' +
+          etiquetaDia_(validacion.inicio) + ' a las ' + validacion.horaTexto + '.'
+      };
+    }
+
     if (ocupados >= CONFIG.CUPOS) {
       return error_('sin_cupo', 'Ese horario se acaba de ocupar. Elegí otro, por favor.');
     }
@@ -553,6 +575,34 @@ function generarCodigo_() {
     codigo += alfabeto.charAt(parseInt(uuid.substr(i * 2, 2), 16) % alfabeto.length);
   }
   return 'RG-' + codigo;
+}
+
+/**
+ * Turno ya creado para el mismo telefono y el mismo horario: es un reintento
+ * del mismo cliente, no una reserva nueva.
+ */
+function turnoRepetido_(eventos, validacion) {
+  var marca = 'Teléfono: ' + validacion.telefono + '\n';
+  for (var i = 0; i < eventos.length; i++) {
+    var evento = eventos[i];
+    if (evento.isAllDayEvent()) {
+      continue;
+    }
+    if (evento.getStartTime().getTime() !== validacion.inicio.getTime()) {
+      continue;
+    }
+    var detalle = String(evento.getDescription() || '');
+    if (detalle.indexOf(marca) > -1 && /^Código: RG-[A-Z0-9]{8}$/m.test(detalle)) {
+      return evento;
+    }
+  }
+  return null;
+}
+
+/** Codigo de reserva anotado en un evento de turno. */
+function codigoDeEvento_(evento) {
+  var encontrado = String(evento.getDescription() || '').match(/Código: (RG-[A-Z0-9]{8})/);
+  return encontrado ? encontrado[1] : 'RG-XXXXXXXX';
 }
 
 function buscarPorCodigo_(codigo) {
@@ -670,6 +720,51 @@ function probar() {
     var cancelacion = cancelarReserva_({ codigo: reserva.codigo });
     Logger.log('Reserva de prueba borrada: ' + JSON.stringify(cancelacion));
   }
+}
+
+/**
+ * Mantenimiento: borra los turnos de prueba que hayan quedado dando vueltas
+ * (por ejemplo de las verificaciones automaticas del sistema). Solo toca
+ * eventos cuyo cliente sea uno de los nombres de prueba conocidos: nunca
+ * borra turnos reales. Se ejecuta a mano desde el editor.
+ */
+var NOMBRES_DE_PRUEBA = [
+  'Prueba automatica',
+  'Cliente de prueba',
+  'Ana Perez',
+  'Bruno Diaz',
+  'Carla Sosa'
+];
+
+function limpiarPruebas() {
+  var desde = sumarDias_(new Date(), -1);
+  var hasta = sumarDias_(new Date(), CONFIG.DIAS_VISTA + 1);
+  var eventos = calendario_().getEvents(desde, hasta);
+  var borrados = 0;
+
+  for (var i = 0; i < eventos.length; i++) {
+    var evento = eventos[i];
+    if (!esTurnoDePrueba_(String(evento.getDescription() || ''))) {
+      continue;
+    }
+    Logger.log('Borrando: ' + evento.getTitle() + ' | ' +
+      claveFecha_(evento.getStartTime()) + ' ' +
+      Utilities.formatDate(evento.getStartTime(), CONFIG.ZONA, 'HH:mm'));
+    evento.deleteEvent();
+    borrados++;
+  }
+
+  invalidarAgenda_();
+  Logger.log('Turnos de prueba borrados: ' + borrados);
+}
+
+function esTurnoDePrueba_(detalle) {
+  for (var i = 0; i < NOMBRES_DE_PRUEBA.length; i++) {
+    if (detalle.indexOf('Cliente: ' + NOMBRES_DE_PRUEBA[i] + '\n') > -1) {
+      return true;
+    }
+  }
+  return false;
 }
 
 

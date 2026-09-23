@@ -20,7 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 CONFIG = {
-    "clave": "rosconi-cambiar-esta-clave-2026",
+    "clave": "rosconi-artigas-turnos-2026-k72b",
     "paso_min": 30,
     "anticipacion_min": 1440,
     "dias_vista": 30,
@@ -175,6 +175,22 @@ def crear(cuerpo: dict) -> dict:
                for d, h in franjas):
         return {"ok": False, "error": "fuera_de_horario", "mensaje": "Ese horario queda fuera de atención."}
     usados = ocupados(inicio, fin)
+    # Reintento del mismo cliente (se corto la conexion justo al confirmar):
+    # se devuelve el turno que ya existe, sin ocupar el segundo lugar.
+    repetido = next(
+        (r for r in RESERVAS if r["telefono"] == telefono and r["inicio"] == inicio),
+        None,
+    )
+    if repetido:
+        return {
+            "ok": True, "repetido": True, "codigo": repetido["codigo"],
+            "estado": "libre" if usados == 0 else "ultimo",
+            "cuposLibres": max(CONFIG["cupos"] - usados, 0),
+            "fecha": inicio.date().isoformat(), "hora": inicio.strftime("%H:%M"),
+            "etiqueta": etiqueta(inicio), "servicio": elegido["nombre"],
+            "duracionMinutos": elegido["minutos"],
+            "mensaje": f"Ese turno ya estaba confirmado para el {etiqueta(inicio)} a las {inicio:%H:%M}.",
+        }
     if usados >= CONFIG["cupos"]:
         return {"ok": False, "error": "sin_cupo", "mensaje": "Ese horario se acaba de ocupar."}
     nuevo = codigo()

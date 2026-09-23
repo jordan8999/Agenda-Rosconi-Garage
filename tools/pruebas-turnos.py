@@ -4,7 +4,8 @@
 
     python tools/mock-turnos.py                  # en otra ventana
     python tools/pruebas-turnos.py               # contra http://127.0.0.1:8130
-    python tools/pruebas-turnos.py --url https://script.google.com/macros/s/XXX/exec
+    python tools/pruebas-turnos.py --url https://script.google.com/macros/s/XXX/exec \
+        --clave TU_CLAVE                         # contra el backend desplegado
 
 Verifica reglas de negocio: cupos simultaneos, anticipacion de 24 h, horario de
 atencion, validaciones, reserva, consulta y cancelacion.
@@ -12,25 +13,54 @@ atencion, validaciones, reserva, consulta y cancelacion.
 from __future__ import annotations
 
 import argparse
+import http.cookiejar
 import json
+import time
+import urllib.error
 import urllib.request
 from datetime import date, datetime, timedelta
 
-CLAVE = "rosconi-cambiar-esta-clave-2026"
+CLAVE = "rosconi-artigas-turnos-2026-k72b"
 SERVICIO = "Service completo y lubricentro"
 RESULTADOS: list[tuple[bool, str]] = []
 
 
+# Apps Script contesta con un redirect a script.googleusercontent.com que
+# necesita las cookies de la primera respuesta: sin ellas devuelve 404 de
+# forma intermitente. El opener las conserva (el mock local no las usa).
+ABRIDOR = urllib.request.build_opener(
+    urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar())
+)
+
+
 def pedir(url: str, ruta: str, cuerpo: dict | None = None) -> dict:
+    # El mock atiende en la raíz (http://127.0.0.1:8130/), pero Apps Script
+    # sirve en /exec y responde 404 si se agrega una barra antes de los
+    # parámetros. Se normaliza acá para que la misma suite sirva en los dos.
+    base = url.rstrip("/")
+    if base.endswith("/exec") and ruta.startswith("/"):
+        ruta = ruta[1:]
     datos = json.dumps(cuerpo).encode("utf-8") if cuerpo is not None else None
     peticion = urllib.request.Request(
-        url + ruta,
+        base + ruta,
         data=datos,
-        headers={"Content-Type": "text/plain;charset=utf-8"},
+        headers={
+            "Content-Type": "text/plain;charset=utf-8",
+            "User-Agent": "RosconiGarage-pruebas-turnos",
+        },
         method="POST" if datos else "GET",
     )
-    with urllib.request.urlopen(peticion, timeout=30) as respuesta:
-        return json.loads(respuesta.read().decode("utf-8"))
+    # Solo se reintentan las lecturas: reintentar una reserva podría duplicarla.
+    intentos = 1 if datos else 3
+    for intento in range(1, intentos + 1):
+        try:
+            with ABRIDOR.open(peticion, timeout=45) as respuesta:
+                return json.loads(respuesta.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            if error.code != 404 or intento == intentos:
+                raise
+            time.sleep(1.5)
+    raise RuntimeError("El backend no respondio.")
 
 
 def verificar(condicion: bool, descripcion: str) -> None:
@@ -76,10 +106,13 @@ def turno_en(agenda: dict, fecha: str, hora: str) -> dict | None:
 
 
 def main() -> int:
+    global CLAVE
     parser = argparse.ArgumentParser(description="Pruebas del contrato de turnos.")
     parser.add_argument("--url", default="http://127.0.0.1:8130")
+    parser.add_argument("--clave", default=CLAVE, help="Clave de instalación del backend.")
     args = parser.parse_args()
     url = args.url.rstrip("/")
+    CLAVE = args.clave
     print(f"\n=== Pruebas de turnos contra {url} ===\n")
 
     print("1. Autenticacion y lectura de agenda")
@@ -149,6 +182,14 @@ def main() -> int:
     verificar(segunda.get("estado") == "ultimo", "la segunda queda como ultimo lugar")
     verificar(segunda.get("cuposLibres") == 0, "ya no quedan cupos")
 
+    # Reintento del mismo cliente: si se corta la conexion justo al confirmar
+    # (o toca dos veces el boton), el segundo envio debe devolver el turno que
+    # ya existe, sin consumir el segundo lugar ni duplicar el evento.
+    repetida = pedir(url, "/", datos_reserva(fecha=fecha, hora=hora, nombre="Ana Perez"))
+    verificar(repetida.get("ok") is True, "un reintento del mismo cliente se acepta")
+    verificar(repetida.get("repetido") is True, "el backend avisa que el turno ya existia")
+    verificar(repetida.get("codigo") == codigo, "el reintento devuelve el mismo codigo")
+
     tercera = pedir(url, "/", datos_reserva(fecha=fecha, hora=hora, nombre="Carla Sosa",
                                            telefono="099444555"))
     verificar(tercera.get("error") == "sin_cupo", "la tercera se rechaza por falta de cupo")
@@ -168,6 +209,17 @@ def main() -> int:
     vuelto = turno_en(agenda_de(url), fecha, hora)
     verificar(vuelto is not None and vuelto["estado"] == "ultimo",
               "al cancelar, el horario vuelve como ultimo lugar")
+
+    print("\n6. Limpieza (la suite no deja turnos de prueba)")
+    restante = segunda.get("codigo", "")
+    verificar(bool(restante), "la segunda reserva tambien entrego un codigo")
+    cierre = pedir(url, "/", {"accion": "cancelar", "clave": CLAVE, "codigo": restante})
+    verificar(cierre.get("ok") is True, "se cancela la segunda reserva")
+    liberado = turno_en(agenda_de(url), fecha, hora)
+    verificar(liberado is not None and liberado["estado"] == "libre",
+              "con los dos cupos libres el horario vuelve a ofrecerse")
+    verificar(agenda_de(url, "Servicio completo y lubricentro").get("ok") is True,
+              "la agenda sigue respondiendo despues de la limpieza")
 
     fallas = [descripcion for ok, descripcion in RESULTADOS if not ok]
     print(f"\nRESULTADO: {len(RESULTADOS) - len(fallas)}/{len(RESULTADOS)} pruebas OK")

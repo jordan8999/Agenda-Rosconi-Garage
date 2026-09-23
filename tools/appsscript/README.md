@@ -79,6 +79,24 @@ Si se edita `Code.gs`, hay que volver a implementar: **Implementar > Administrar
 implementaciones > editar (lápiz) > Versión: Nueva versión > Implementar**. La
 URL `/exec` no cambia.
 
+## Reintentos y turnos duplicados
+
+Si el cliente toca dos veces "Confirmar" o se le corta la conexión justo después
+de confirmar, el segundo envío **no** crea otro turno: el backend reconoce el
+mismo teléfono en el mismo horario y devuelve el turno que ya existe, con su
+código y la marca `repetido`. Un reintento nunca ocupa el segundo lugar ni deja
+un evento duplicado en el calendario. La web, además, reintenta sola una vez
+cuando una petición falla.
+
+## Limpiar turnos de prueba
+
+`limpiarPruebas()` borra los turnos que hayan quedado de las verificaciones
+automáticas (clientes con nombres de prueba: `Prueba automatica`,
+`Cliente de prueba`, `Ana Perez`, `Bruno Diaz`, `Carla Sosa`). **Nunca toca
+turnos reales.** Se ejecuta a mano desde el editor, igual que `instalar`: elegir
+`limpiarPruebas` en el desplegable y ▶ Ejecutar; en el registro informa qué
+borró.
+
 ## Verificar la conexión
 
 ```
