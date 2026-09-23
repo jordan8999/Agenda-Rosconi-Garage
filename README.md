@@ -107,7 +107,7 @@ calendario roto: nunca hay un callejón sin salida.
 | Intervalo entre turnos | 30 min |
 | Trabajos por horario | Entran completos en una franja (08:00–12:00 o 14:00–18:00) |
 | Trabajos que dejan el auto | Entrega a las 08:00 o 14:00; ocupan el lugar hasta el cierre |
-| Límite antiabuso | 2 reservas por teléfono y 12 por día (se libera al cancelar) |
+| Límite antiabuso | 2 reservas por teléfono y 20 por día (se libera al cancelar) |
 | Cerrar un día (feriado) | evento de todo el día en el calendario |
 
 El cliente **nunca** elige línea ni herramienta: ve "varios horarios" o "último lugar". La línea que

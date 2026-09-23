@@ -43,7 +43,7 @@ Listo: desde ese momento las reservas de la web caen solas en el calendario.
 | Anticipación mínima | 24 h | `CONFIG.ANTICIPACION_MIN` |
 | Agenda abierta | 30 días | `CONFIG.DIAS_VISTA` |
 | Intervalo entre turnos | 30 min | `CONFIG.PASO_MIN` |
-| Máximo de reservas web por día | 12 | `CONFIG.MAX_RESERVAS_POR_DIA` |
+| Máximo de reservas web por día | 20 | `CONFIG.MAX_RESERVAS_POR_DIA` |
 | Máximo por teléfono | 2 (el cupo se libera al cancelar) | `CONFIG.MAX_RESERVAS_POR_TELEFONO` |
 
 El cliente ve **"libre"** o **"último lugar"**. Nunca ve elevador ni piso: la
@@ -151,10 +151,17 @@ cuando una petición falla.
 
 `limpiarPruebas()` borra los turnos que hayan quedado de las verificaciones
 automáticas (clientes con nombres de prueba: `Prueba automatica`,
-`Cliente de prueba`, `Ana Perez`, `Bruno Diaz`, `Carla Sosa`). **Nunca toca
-turnos reales.** Se ejecuta a mano desde el editor, igual que `instalar`: elegir
-`limpiarPruebas` en el desplegable y ▶ Ejecutar; en el registro informa qué
-borró.
+`Cliente de prueba`, `Ana Perez`, `Bruno Diaz`, `Carla Sosa`, `Ficha Prueba`,
+`Deja Ficha`, `Limite Prueba`, `Sonda de diagnostico`, `Prueba Panel`,
+`Cliente por teléfono`, `Cliente Telefónico`, `Ejemplo taller`, `Auto de ejemplo`,
+`Verificacion Version`). **Nunca toca turnos reales.** Se ejecuta a mano desde el
+editor, igual que `instalar`: elegir `limpiarPruebas` en el desplegable y ▶ Ejecutar;
+en el registro informa qué borró.
+
+`reiniciarLimites()` borra los contadores antiabuso (máximo por día y por teléfono).
+Se usa si alguna verificación dejó el límite del día agotado y la reserva web queda
+frenada con el mensaje "Hoy ya alcanzamos el máximo de turnos por la web". No toca
+ningún turno del calendario.
 
 ## Verificar la conexión
 

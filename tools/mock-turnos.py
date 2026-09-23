@@ -27,7 +27,7 @@ CONFIG = {
     "anticipacion_min": 1440,
     "dias_vista": 30,
     "cupos": 2,
-    "max_reservas_por_dia": 12,
+    "max_reservas_por_dia": 20,
     "max_reservas_por_telefono": 2,
     # Claves = dia de la semana de Python: lunes 0 ... domingo 6
     "atencion": {

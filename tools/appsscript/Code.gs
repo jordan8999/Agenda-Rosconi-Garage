@@ -79,7 +79,7 @@ var CONFIG = {
   SERVICIO_PREDETERMINADO: 'Service completo y lubricentro',
   AVISO_LARGO_MIN: 240,    // a partir de aca el evento se marca como largo
 
-  MAX_RESERVAS_POR_DIA: 12,
+  MAX_RESERVAS_POR_DIA: 20,
   MAX_RESERVAS_POR_TELEFONO: 2,
   LOCK_MS: 15000,
 
@@ -1121,6 +1121,29 @@ function enviarResumenDelDia() {
   Logger.log('Resumen del dia enviado a ' + destino);
 }
 
+/**
+ * Mantenimiento: borra los contadores antiabuso (maximo por dia y por telefono).
+ * Se ejecuta a mano desde el editor si alguna verificacion automatica dejo el
+ * limite del dia agotado y hay que volver a habilitar la reserva web.
+ * No toca ningun turno del calendario.
+ */
+var TELEFONOS_DE_PRUEBA = [
+  '099123456', '099222333', '099444555', '099555111', '099666222', '099666333',
+  '099777333', '099777444', '099888777', '099000111', '099000222', '099111222',
+  '099333444', '099555777', '099666111', '099000999'
+];
+
+function reiniciarLimites() {
+  var cache = CacheService.getScriptCache();
+  var hoy = claveFecha_(new Date());
+  cache.remove('reservas-dia:' + hoy);
+  Logger.log('Limite por dia reiniciado para ' + hoy + '.');
+  for (var i = 0; i < TELEFONOS_DE_PRUEBA.length; i++) {
+    cache.remove('reservas-tel:' + TELEFONOS_DE_PRUEBA[i]);
+  }
+  Logger.log('Telefonos de prueba liberados: ' + TELEFONOS_DE_PRUEBA.length + '.');
+}
+
 /** Ejecutar a mano desde el editor para ver como queda el resumen de hoy. */
 function verResumenDeHoy() {
   Logger.log(resumenDelDia_(new Date()));
@@ -1217,7 +1240,19 @@ var NOMBRES_DE_PRUEBA = [
   'Cliente de prueba',
   'Ana Perez',
   'Bruno Diaz',
-  'Carla Sosa'
+  'Carla Sosa',
+  'Ficha Prueba',
+  'Deja Ficha',
+  'Limite Prueba',
+  'Sonda de diagnostico',
+  'Prueba Panel',
+  'Cliente por teléfono',
+  'Cliente Telefónico',
+  'Ejemplo taller corto',
+  'Ejemplo taller grande',
+  'Auto de ejemplo',
+  'Auto de ejemplo 2',
+  'Verificacion Version'
 ];
 
 function limpiarPruebas() {
