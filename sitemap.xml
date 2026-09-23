@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://jordanweb2016.github.io/Rosconi-Garage/</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://jordanweb2016.github.io/Rosconi-Garage/assets/img/og-1200x630.jpg</image:loc>
+      <image:title>Rosconi Garage, taller mecánico en Artigas</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://jordanweb2016.github.io/Rosconi-Garage/assets/img/hero-640.webp</image:loc>
+      <image:title>Auto en reparación dentro del taller Rosconi Garage</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://jordanweb2016.github.io/Rosconi-Garage/assets/img/taller-cartel-rosconi-garage-706.webp</image:loc>
+      <image:title>Cartel de Rosconi Garage en Juan Antonio Lavalleja 730, Artigas</image:title>
+    </image:image>
+  </url>
+</urlset>

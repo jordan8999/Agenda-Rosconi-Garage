@@ -1,0 +1,184 @@
+{
+  "generado_por": "tools/optimize-images.py",
+  "hero": {
+    "origen": "foto 10.png",
+    "recorte": "4:5",
+    "variantes": [
+      640,
+      400
+    ],
+    "og": "og-1200x630.jpg"
+  },
+  "fotos": {
+    "taller-cartel-rosconi-garage": {
+      "alt": "Golf GTI rojo bajo el cartel de Rosconi Garage en Artigas",
+      "origen": "foto 1.png",
+      "ancho": 706,
+      "alto": 880,
+      "variantes": [
+        400,
+        706
+      ]
+    },
+    "golf-sobre-elevador-service": {
+      "alt": "Volkswagen Golf azul elevado durante un service en Rosconi Garage",
+      "origen": "foto 2.png",
+      "ancho": 783,
+      "alto": 871,
+      "variantes": [
+        400,
+        783
+      ]
+    },
+    "reparacion-caja-de-cambios": {
+      "alt": "Caja de cambios desarmada en reparacion en Rosconi Garage",
+      "origen": "foto 3.png",
+      "ancho": 648,
+      "alto": 883,
+      "variantes": [
+        400,
+        648
+      ]
+    },
+    "motor-desarmado-distribucion": {
+      "alt": "Motor desarmado con arbol de levas y cadena de distribucion a la vista",
+      "origen": "foto 4.png",
+      "ancho": 495,
+      "alto": 880,
+      "variantes": [
+        400,
+        495
+      ]
+    },
+    "cambio-de-aceite-liqui-moly": {
+      "alt": "Cambio de aceite con Liqui Moly Top Tec 4200 5W-40",
+      "origen": "foto 5.png",
+      "ancho": 667,
+      "alto": 857,
+      "variantes": [
+        400,
+        667
+      ]
+    },
+    "audi-tt-capo-abierto": {
+      "alt": "Audi TT naranja con el capo abierto en el box del taller",
+      "origen": "foto 6.png",
+      "ancho": 708,
+      "alto": 871,
+      "variantes": [
+        400,
+        708
+      ]
+    },
+    "mecanico-trabajando-en-motor": {
+      "alt": "Mecanico trabajando con herramientas sobre el motor de un auto",
+      "origen": "foto 7.png",
+      "ancho": 708,
+      "alto": 872,
+      "variantes": [
+        400,
+        708
+      ]
+    },
+    "aditivo-blue-chem-injection": {
+      "alt": "Aplicacion de aditivo Blue Chem Injection Cleaner en el motor",
+      "origen": "foto 8.png",
+      "ancho": 705,
+      "alto": 881,
+      "variantes": [
+        400,
+        705
+      ]
+    },
+    "audi-capo-abierto-en-box": {
+      "alt": "Audi rojo con el capo abierto durante una reparacion",
+      "origen": "foto 9.png",
+      "ancho": 650,
+      "alto": 871,
+      "variantes": [
+        400,
+        650
+      ]
+    },
+    "mercedes-benz-en-taller": {
+      "alt": "Mercedes-Benz oscuro en el interior del taller Rosconi Garage",
+      "origen": "foto 10.png",
+      "ancho": 660,
+      "alto": 875,
+      "variantes": [
+        400,
+        660
+      ]
+    },
+    "promo-blue-chem-fuel-system-cleaner": {
+      "alt": "Promocion Blue Chem Fuel System Cleaner para limpiar el sistema de gasolina",
+      "origen": "Foto 11.png",
+      "ancho": 665,
+      "alto": 877,
+      "variantes": [
+        400,
+        665
+      ]
+    },
+    "promo-blue-chem-nano-engine": {
+      "alt": "Promocion Blue Chem powerX Nano Engine Super Protection",
+      "origen": "foto 12.png",
+      "ancho": 642,
+      "alto": 874,
+      "variantes": [
+        400,
+        642
+      ]
+    },
+    "piezas-de-motor-desmontadas": {
+      "alt": "Piezas y culata desmontadas durante una reparacion de motor",
+      "origen": "Foto 13.png",
+      "ancho": 655,
+      "alto": 870,
+      "variantes": [
+        400,
+        655
+      ]
+    },
+    "carter-sellado-px-black": {
+      "alt": "Carter desmontado y sellado con silicona Blue Chem PX Black",
+      "origen": "foto 14.png",
+      "ancho": 660,
+      "alto": 881,
+      "variantes": [
+        400,
+        660
+      ]
+    },
+    "arbol-de-levas-y-cadena": {
+      "alt": "Arbol de levas y cadena de distribucion a la vista durante la reparacion",
+      "origen": "foto 15.png",
+      "ancho": 659,
+      "alto": 877,
+      "variantes": [
+        400,
+        659
+      ]
+    },
+    "amarok-v6-reprogramacion": {
+      "alt": "Volkswagen Amarok V6 durante una reprogramacion electronica CSR",
+      "origen": "foto 16.png",
+      "ancho": 701,
+      "alto": 879,
+      "variantes": [
+        400,
+        701
+      ]
+    },
+    "frente-desarmado-reparacion": {
+      "alt": "Frente desarmado de una camioneta durante una reparacion mayor",
+      "origen": "foto 17.png",
+      "ancho": 707,
+      "alto": 880,
+      "variantes": [
+        400,
+        707
+      ]
+    }
+  }
+}

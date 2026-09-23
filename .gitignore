@@ -1,0 +1,32 @@
+# ---------------------------------------------------------------
+# Insumos locales: NO forman parte del sitio publicado
+# ---------------------------------------------------------------
+# Originales sin optimizar (los assets finales viven en assets/img)
+Foto 1_files/
+# Borrador previo a la reescritura (referencia de copy)
+HTML COMPLETO.html
+# Documentacion de negocio / archivos ajenos al sitio
+Ficha Técnica - Rosconi Garage.pdf
+*.zip
+_referencia/
+
+# ---------------------------------------------------------------
+# Sistema operativo
+# ---------------------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ---------------------------------------------------------------
+# Python (tools/)
+# ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ---------------------------------------------------------------
+# Salidas temporales
+# ---------------------------------------------------------------
+*.log
+*.tmp

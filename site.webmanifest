@@ -1,0 +1,30 @@
+{
+  "name": "Rosconi Garage — Taller mecánico en Artigas",
+  "short_name": "Rosconi Garage",
+  "description": "Taller mecánico en Artigas, Uruguay: mecánica general e integral, service y lubricentro, distribución y reprogramación electrónica. Reservá tu turno online.",
+  "lang": "es-UY",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

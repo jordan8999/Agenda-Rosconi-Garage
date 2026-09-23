@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Agendas externas que no deben indexarse desde aca
+Disallow: /assets/img/
+
+Sitemap: https://jordanweb2016.github.io/Rosconi-Garage/sitemap.xml
