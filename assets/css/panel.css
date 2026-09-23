@@ -142,6 +142,17 @@ code { background: var(--capa2); padding: 2px 5px; border-radius: 6px; font-size
   padding: 0 14px 8px;
 }
 .dia__resumen { margin: 0; color: var(--tenue); font-size: .92rem; }
+.dia__proximo {
+  display: inline-block;
+  margin: 8px 0 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #2a1c12;
+  border: 1px solid var(--principal);
+  color: var(--texto);
+  font-size: .9rem;
+  font-weight: 600;
+}
 .salto { display: grid; gap: 4px; font-size: .8rem; color: var(--tenue); }
 .salto input {
   font: inherit;

@@ -32,7 +32,7 @@
       <label for="panel-clave">Clave de administración</label>
       <input id="panel-clave" type="password" autocomplete="current-password"
              placeholder="Clave del panel" required>
-      <button class="btn btn--principal" type="submit">Entrar</button>
+      <button class="btn btn--principal" type="submit" data-panel-entrar>Entrar</button>
     </form>
     <p class="nota">
       Es distinta de la clave del sitio. Está en <code>CONFIG.CLAVE_ADMIN</code> del script de
@@ -54,6 +54,7 @@
         <div>
           <h1 data-panel-titulo-dia>Cargando…</h1>
           <p class="dia__resumen" data-panel-resumen-dia></p>
+          <p class="dia__proximo" data-panel-proximo hidden></p>
         </div>
         <label class="salto">
           Ir a otro día

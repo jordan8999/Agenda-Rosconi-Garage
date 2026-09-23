@@ -136,6 +136,8 @@
           .then(function () {
             registrar(!doc.querySelector("[data-panel-ingreso]").hidden,
                       "con la clave equivocada sigue en el ingreso");
+            registrar(doc.querySelector("[data-panel-contenido]").hidden,
+                      "con la clave equivocada NO se abre la agenda");
             doc.querySelector("#panel-clave").value = CLAVE_ADMIN;
             doc.querySelector("[data-panel-form-clave]").dispatchEvent(
               new win.Event("submit", { bubbles: true, cancelable: true })

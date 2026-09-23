@@ -113,13 +113,29 @@
     }
   }
 
-  function salir(mensaje, tipo) {
+  /** Traduce el error del backend a algo que el dueño entienda. */
+  function mensajeDeError(error) {
+    var texto = String((error && error.message) || error || "");
+    if (/clave de instalacion/i.test(texto)) {
+      return "El backend todavía no tiene el panel: falta implementar una versión nueva " +
+        "del script (Implementar > Administrar implementaciones > Versión: nueva versión).";
+    }
+    if (/failed to fetch|networkerror|load failed|network/i.test(texto)) {
+      return "No pudimos comunicarnos con la agenda del taller. Revisá la conexión y " +
+        "probá de nuevo.";
+    }
+    return "No pudimos leer la agenda: " + texto;
+  }
+
+  function salir(mensaje, tipo, olvidarClave) {
     estado.claveAdmin = "";
     estado.tablero = null;
-    try {
-      window.localStorage.removeItem(AJUSTES.CLAVE_GUARDADA);
-    } catch (error) {
-      /* nada */
+    if (olvidarClave !== false) {
+      try {
+        window.localStorage.removeItem(AJUSTES.CLAVE_GUARDADA);
+      } catch (error) {
+        /* nada */
+      }
     }
     refs.ingreso.hidden = false;
     refs.contenido.hidden = true;
@@ -154,11 +170,20 @@
         if (!conservarAviso) {
           aviso("", "");
         }
+        return true;
       })
       .catch(function (error) {
-        if (error.message !== "clave_invalida") {
-          aviso("No pudimos leer la agenda: " + error.message, "error");
+        if (error.message === "clave_invalida") {
+          return false;
         }
+        // Sin agenda cargada no se muestra el panel: se vuelve al ingreso con el
+        // motivo (el dueño no queda "adentro" de una pantalla vacía).
+        if (!estado.tablero) {
+          salir(mensajeDeError(error), "error", false);
+        } else {
+          aviso("No pudimos actualizar la agenda: " + error.message, "error");
+        }
+        return false;
       });
   }
 
@@ -175,6 +200,12 @@
   /* ------------------------------------------------------------------ tira */
   function pintarTira() {
     refs.tira.textContent = "";
+    var hoy = crear("button", "tira__dia");
+    hoy.type = "button";
+    hoy.setAttribute("data-fecha-dia", hoyISO());
+    hoy.appendChild(crear("strong", "", "Hoy"));
+    hoy.appendChild(crear("span", "", "ir al día"));
+    refs.tira.appendChild(hoy);
     (estado.tablero.agenda || []).forEach(function (dia) {
       var boton = crear("button", "tira__dia");
       boton.type = "button";
@@ -220,6 +251,33 @@
     refs.fechaAnotar.value = estado.fecha;
     if (!refs.horaAnotar.value) {
       refs.horaAnotar.value = dia.libres.length ? dia.libres[0].hora : "08:00";
+    }
+    pintarProximo(dia);
+  }
+
+  /** Aviso grande en la vista del día: qué auto sigue hoy. */
+  function pintarProximo(dia) {
+    if (!refs.proximo) {
+      return;
+    }
+    if (!dia || dia.cerrado || dia.fecha !== hoyISO()) {
+      refs.proximo.hidden = true;
+      return;
+    }
+    var ahora = new Date();
+    var hora = ("0" + ahora.getHours()).slice(-2) + ":" + ("0" + ahora.getMinutes()).slice(-2);
+    var siguiente = dia.turnos.filter(function (turno) {
+      return turno.hora >= hora;
+    })[0];
+    refs.proximo.hidden = false;
+    if (siguiente) {
+      refs.proximo.textContent = "Próximo auto: " + siguiente.hora + " · " +
+        (siguiente.vehiculo || "") +
+        (siguiente.cliente ? " (" + siguiente.cliente + ")" : "");
+    } else {
+      refs.proximo.textContent = dia.turnos.length
+        ? "Ya pasaron los " + dia.turnos.length + " turnos de hoy"
+        : "Sin turnos para hoy";
     }
   }
 
@@ -398,7 +456,7 @@
         return cargarTablero(estado.tablero ? estado.tablero.desde : null, true);
       })
       .catch(function (error) {
-        aviso(error.message || "No pudimos marcar el turno.", "error");
+        aviso(mensajeDeError(error), "error");
       });
   }
 
@@ -434,7 +492,7 @@
       })
       .catch(function (error) {
         refs.enviarAnotar.disabled = false;
-        aviso(error.message || "No pudimos guardar el turno.", "error");
+        aviso(mensajeDeError(error), "error");
       });
   }
 
@@ -458,7 +516,7 @@
         }
       })
       .catch(function (error) {
-        aviso(error.message || "No pudimos buscar.", "error");
+        aviso(mensajeDeError(error), "error");
       });
   }
 
@@ -497,6 +555,8 @@
     refs.acciones = buscarUno("[data-panel-acciones]");
     refs.formClave = buscarUno("[data-panel-form-clave]");
     refs.clave = buscarUno("#panel-clave");
+    refs.botonEntrar = buscarUno("[data-panel-entrar]");
+    refs.proximo = buscarUno("[data-panel-proximo]");
     refs.version = buscarUno("[data-panel-version]");
     refs.tira = buscarUno("[data-panel-tira]");
     refs.titulo = buscarUno("[data-panel-titulo-dia]");
@@ -527,11 +587,26 @@
         aviso("Escribí la clave del panel.", "error");
         return;
       }
+      // No se entra "a ciegas": el panel se abre recién cuando el backend
+      // confirma la clave y devuelve la agenda.
       estado.claveAdmin = clave;
-      guardarClave(clave);
-      refs.ingreso.hidden = true;
-      refs.contenido.hidden = false;
-      cargarTablero();
+      if (refs.botonEntrar) {
+        refs.botonEntrar.disabled = true;
+      }
+      aviso("Verificando la clave…", "cargando");
+      cargarTablero(null, true).then(function (ok) {
+        if (refs.botonEntrar) {
+          refs.botonEntrar.disabled = false;
+        }
+        if (!ok) {
+          return;
+        }
+        guardarClave(clave);
+        refs.ingreso.hidden = true;
+        refs.contenido.hidden = false;
+        refs.acciones.hidden = false;
+        aviso("", "");
+      });
     });
 
     buscarTodos("[data-panel-vista]").forEach(function (boton) {
@@ -593,9 +668,22 @@
       return;
     }
     estado.claveAdmin = guardada;
-    refs.ingreso.hidden = true;
-    refs.contenido.hidden = false;
-    cargarTablero();
+    aviso("Cargando la agenda…", "cargando");
+    cargarTablero(null, true).then(function (ok) {
+      if (ok) {
+        refs.ingreso.hidden = true;
+        refs.contenido.hidden = false;
+        refs.acciones.hidden = false;
+        aviso("", "");
+      }
+    });
+    // La agenda se refresca sola cada 5 minutos: sirve para el celular o la
+    // tablet que queda en el taller.
+    window.setInterval(function () {
+      if (!document.hidden && estado.tablero) {
+        cargarTablero(estado.tablero.desde, true);
+      }
+    }, 300000);
   }
 
   if (document.readyState === "loading") {
