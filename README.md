@@ -5,7 +5,7 @@ Artigas, Uruguay. Está pensado para dos objetivos concretos: **posicionar búsq
 ("taller mecánico en Artigas", service, distribución, reprogramación) y **convertir visitas en turnos
 reservados** con una agenda propia (Google Calendar + Google Apps Script, sin plataformas de terceros).
 
-- **Sitio publicado:** https://jordanweb2016.github.io/Rosconi-Garage/
+- **Sitio publicado:** https://jordan8999.github.io/Agenda-Rosconi-Garage/
 - **Agenda de turnos:** propia, sobre el Google Calendar del taller (ver `tools/appsscript/`)
 - **WhatsApp / teléfono:** +598 91 317 613
 - **Email:** martinrosca12@gmail.com
@@ -157,7 +157,7 @@ en vez del mock: crea un turno real en el calendario del taller y lo cancela al 
   versión*); la URL `/exec` no cambia. Si quedaron turnos de prueba, se borran ejecutando
   `limpiarPruebas` desde el editor.
 - **URL canónica:** si algún día se usa un dominio propio, hay que reemplazar
-  `https://jordanweb2016.github.io/Rosconi-Garage/` en `index.html` (canonical, Open Graph, JSON-LD),
+  `https://jordan8999.github.io/Agenda-Rosconi-Garage/` en `index.html` (canonical, Open Graph, JSON-LD),
   `sitemap.xml` y `robots.txt`, y crear el archivo `CNAME`.
 
 ## Decisiones de implementación

@@ -4,4 +4,4 @@ Allow: /
 # Agendas externas que no deben indexarse desde aca
 Disallow: /assets/img/
 
-Sitemap: https://jordanweb2016.github.io/Rosconi-Garage/sitemap.xml
+Sitemap: https://jordan8999.github.io/Agenda-Rosconi-Garage/sitemap.xml
