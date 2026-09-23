@@ -81,7 +81,7 @@
         <a href="#taller">Taller</a>
         <a href="#promos">Promos</a>
         <a href="#contacto">Contacto</a>
-        <a class="btn btn--primary nav__cta" href="#turnos">
+        <a class="btn btn--primary nav__cta" href="#turnos" data-abrir-reserva>
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
           Reservar turno
         </a>
@@ -103,7 +103,7 @@
             Trabajo serio, diagnóstico previo y garantía escrita en todos los servicios.
           </p>
           <div class="hero__cta">
-            <a class="btn btn--primary" href="#turnos">
+            <a class="btn btn--primary" href="#turnos" data-abrir-reserva>
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
               Reservar turno online
             </a>
@@ -115,7 +115,7 @@
           </div>
           <ul class="hero__facts">
             <li class="fact"><span class="fact__number">+10</span><span class="fact__label">Años de experiencia</span></li>
-            <li class="fact"><span class="fact__number">2</span><span class="fact__label">Líneas de trabajo</span></li>
+            <li class="fact"><span class="fact__number">2</span><span class="fact__label">Autos por turno</span></li>
             <li class="fact"><span class="fact__number">100%</span><span class="fact__label">Garantía escrita</span></li>
           </ul>
         </div>
@@ -156,7 +156,7 @@
             </ul>
             <div class="servicio__pie">
               <span class="tag tag--accent">Garantía escrita</span>
-              <a href="#turnos">Reservar este servicio</a>
+              <button class="servicio__cta" type="button" data-abrir-reserva data-servicio="Mecánica general">Reservar este servicio</button>
             </div>
           </article>
 
@@ -173,7 +173,7 @@
             </ul>
             <div class="servicio__pie">
               <span class="tag tag--accent">Garantía escrita</span>
-              <a href="#turnos">Reservar este servicio</a>
+              <button class="servicio__cta" type="button" data-abrir-reserva data-servicio="Mecánica integral">Reservar este servicio</button>
             </div>
           </article>
 
@@ -190,7 +190,7 @@
             </ul>
             <div class="servicio__pie">
               <span class="tag tag--accent">Garantía escrita</span>
-              <a href="#turnos">Reservar este servicio</a>
+              <button class="servicio__cta" type="button" data-abrir-reserva data-servicio="Service completo y lubricentro">Reservar este servicio</button>
             </div>
           </article>
 
@@ -207,7 +207,7 @@
             </ul>
             <div class="servicio__pie">
               <span class="tag tag--accent">Equipos propios</span>
-              <a href="#turnos">Reservar este servicio</a>
+              <button class="servicio__cta" type="button" data-abrir-reserva data-servicio="Reprogramación electrónica">Reservar este servicio</button>
             </div>
           </article>
 
@@ -224,7 +224,7 @@
             </ul>
             <div class="servicio__pie">
               <span class="tag tag--accent">Sin sorpresas</span>
-              <a href="#turnos">Reservar este servicio</a>
+              <button class="servicio__cta" type="button" data-abrir-reserva data-servicio="Diagnóstico con scanner">Reservar este servicio</button>
             </div>
           </article>
         </div>
@@ -232,8 +232,8 @@
         <div class="grid grid--2" style="margin-top: clamp(20px, 3vw, 30px);">
           <p class="notice reveal">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-            Los tiempos de cada trabajo se confirman al reservar: en la agenda ves la duración estimada
-            y los horarios libres de cada línea del taller.
+            Los tiempos de cada trabajo se confirman al reservar: en la agenda ves los horarios
+            libres del taller y elegís el que te sirva.
           </p>
           <p class="notice reveal">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l7 3v6c0 4.5-3 7.9-7 9-4-1.1-7-4.5-7-9V6l7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
@@ -247,80 +247,66 @@
       <div class="container">
         <div class="section-head reveal">
           <p class="eyebrow">Reserva online</p>
-          <h2 id="turnos-titulo">Reservá tu turno en <span class="highlight">3 pasos</span></h2>
+          <h2 id="turnos-titulo">Reservá tu turno <span class="highlight">en un minuto</span></h2>
           <p class="lead">
-            Trabajamos con dos líneas en paralelo, elevador y piso, así que podés reservar sin esperar
-            a que se libere todo el taller. La agenda muestra únicamente los horarios disponibles.
+            Elegís el día y la hora que te sirvan, dejás tus datos y el turno queda agendado.
+            Sin llamados y sin esperar respuesta.
           </p>
         </div>
 
         <ol class="steps reveal" style="margin-bottom: clamp(26px, 4vw, 38px);">
-          <li>Elegí el trabajo: si es un service rápido va a la línea de piso; si el auto tiene que subir al elevador, elegí esa línea.</li>
-          <li>Elegí el día y la hora en el calendario. Los turnos se piden con al menos 24 horas de anticipación.</li>
-          <li>Confirmás y listo: te llega la confirmación con los datos del turno.</li>
+          <li>Elegís el día y el horario libre en la agenda del taller.</li>
+          <li>Dejás tu nombre, tu teléfono y el vehículo. Los turnos se piden con al menos 24 horas de anticipación.</li>
+          <li>Confirmás y queda reservado: podés agregarlo a tu calendario y cancelarlo cuando quieras.</li>
         </ol>
 
-        <div class="turnos__grid">
-          <article class="card card--accent reveal" aria-labelledby="linea-a-titulo">
+        <div class="grid grid--2">
+          <div class="card card--accent reveal">
             <div class="lane__head">
-              <h3 id="linea-a-titulo">Turno en elevador</h3>
-              <span class="tag tag--accent">Línea A</span>
+              <h3>Agenda del taller</h3>
+              <span class="tag tag--accent">Turnos online</span>
             </div>
             <p class="lane__meta">
-              Para mecánica integral, distribución, cajas, frenos y todo trabajo que necesite el auto
-              elevado para trabajar con seguridad.
+              Lunes a viernes de 08:00 a 12:00 y de 14:00 a 18:00. La agenda muestra los horarios
+              que están realmente libres: elegís y listo.
             </p>
-            <a class="btn btn--primary btn--block"
-               href="https://cal.com/rosconigarage/turno-elevador"
-               target="_blank" rel="noopener"
-               data-cal-link="rosconigarage/turno-elevador"
-               data-cal-embed="#cal-elevador"
-               aria-controls="cal-elevador" aria-expanded="false">
+            <button class="btn btn--primary btn--block" type="button" data-abrir-reserva>
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
-              Ver horarios del elevador
-            </a>
-            <div class="booking-slot" id="cal-elevador" hidden>
-              <p class="booking-hint" role="status" data-cal-estado></p>
-            </div>
+              Ver horarios y reservar
+            </button>
             <p class="booking-hint">
               ¿Preferís coordinarlo por WhatsApp?
-              <a href="https://wa.me/59891317613?text=Hola%20Rosconi%20Garage%2C%20quiero%20un%20turno%20en%20elevador." target="_blank" rel="noopener">Escribinos</a>.
+              <a href="https://wa.me/59891317613?text=Hola%20Rosconi%20Garage%2C%20quiero%20pedir%20un%20turno." target="_blank" rel="noopener">Escribinos</a>.
             </p>
-          </article>
+          </div>
 
-          <article class="card reveal" aria-labelledby="linea-b-titulo">
+          <div class="card reveal">
             <div class="lane__head">
-              <h3 id="linea-b-titulo">Turno de service rápido</h3>
-              <span class="tag">Línea B</span>
+              <h3>¿Ya tenés un turno?</h3>
             </div>
             <p class="lane__meta">
-              Para cambio de aceite y filtros, lubricentro, scanner y diagnósticos: trabajos cortos
-              que se hacen en el piso del taller.
+              Ingresá el código que te dimos al reservar para verlo o cancelarlo.
             </p>
-            <a class="btn btn--ghost btn--block"
-               href="https://cal.com/rosconigarage/turno-service-rapido"
-               target="_blank" rel="noopener"
-               data-cal-link="rosconigarage/turno-service-rapido"
-               data-cal-embed="#cal-piso"
-               aria-controls="cal-piso" aria-expanded="false">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
-              Ver horarios de service rápido
-            </a>
-            <div class="booking-slot" id="cal-piso" hidden>
-              <p class="booking-hint" role="status" data-cal-estado></p>
+            <div class="campo">
+              <label for="gestion-codigo">Código del turno</label>
+              <div class="gestion__fila">
+                <input id="gestion-codigo" data-gestion-codigo type="text" autocomplete="off"
+                       placeholder="RG-XXXXXXXX" maxlength="11">
+                <button class="btn btn--ghost" type="button" data-gestion-buscar>Buscar</button>
+              </div>
             </div>
-            <p class="booking-hint">
-              ¿Preferís coordinarlo por WhatsApp?
-              <a href="https://wa.me/59891317613?text=Hola%20Rosconi%20Garage%2C%20quiero%20un%20turno%20de%20service%20r%C3%A1pido." target="_blank" rel="noopener">Escribinos</a>.
-            </p>
-          </article>
+            <p class="reserva__estado" data-gestion-resultado role="status" aria-live="polite"></p>
+            <button class="btn btn--ghost btn--block" type="button" data-gestion-cancelar hidden>
+              Cancelar este turno
+            </button>
+          </div>
         </div>
 
         <p class="notice reveal" style="margin-top: clamp(22px, 3vw, 30px);">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 8h.01"/></svg>
           <span>
-            El calendario se abre acá mismo cuando tocás el botón. Tus datos se usan solo para gestionar
-            el turno. Si necesitás cambiar la fecha, podés hacerlo desde la confirmación.
+            Tus datos se usan únicamente para gestionar el turno. Si necesitás reprogramarlo,
+            escribinos y lo movemos sin problema.
           </span>
         </p>
 
@@ -328,10 +314,9 @@
           <p class="notice" style="margin-top: 16px;">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 8h.01"/></svg>
             <span>
-              El calendario de reservas necesita JavaScript. Mientras tanto podés
-              <a href="https://cal.com/rosconigarage" target="_blank" rel="noopener">abrir la agenda en Cal.com</a>
-              o escribirnos por <a href="https://wa.me/59891317613" target="_blank" rel="noopener">WhatsApp</a>
-              y coordinamos el turno.
+              La reserva online necesita JavaScript. Escribinos por
+              <a href="https://wa.me/59891317613" target="_blank" rel="noopener">WhatsApp</a> o por
+              <a href="mailto:martinrosca12@gmail.com">email</a> y te damos el turno.
             </span>
           </p>
         </noscript>
@@ -447,7 +432,7 @@
               <li>Garantía escrita en todos los servicios</li>
             </ul>
             <div class="hero__cta" style="margin-bottom: 0;">
-              <a class="btn btn--primary" href="#turnos">Reservar turno</a>
+              <a class="btn btn--primary" href="#turnos" data-abrir-reserva>Reservar turno</a>
               <a class="btn btn--ghost" href="https://maps.google.com/?q=Juan+Antonio+Lavalleja+730,+Artigas,+Uruguay" target="_blank" rel="noopener">
                 Ver ubicación
               </a>
@@ -495,7 +480,7 @@
               </div>
             </details>
             <div class="hero__cta" style="margin: 18px 0 0;">
-              <a class="btn btn--primary" href="#turnos">Reservar service</a>
+              <a class="btn btn--primary" href="#turnos" data-abrir-reserva data-servicio="Service completo y lubricentro">Reservar service</a>
               <a class="btn btn--ghost" href="https://wa.me/59891317613?text=Hola%20Rosconi%20Garage%2C%20quiero%20consultar%20por%20Blue%20Chem." target="_blank" rel="noopener">
                 Consultar disponibilidad
               </a>
@@ -529,7 +514,7 @@
               </div>
             </details>
             <div class="hero__cta" style="margin: 18px 0 0;">
-              <a class="btn btn--primary" href="#turnos">Reservar service</a>
+              <a class="btn btn--primary" href="#turnos" data-abrir-reserva data-servicio="Service completo y lubricentro">Reservar service</a>
               <a class="btn btn--whatsapp" href="https://wa.me/59891317613?text=Hola%20Rosconi%20Garage%2C%20quiero%20consultar%20por%20powerX%20Nano%20Engine." target="_blank" rel="noopener">
                 Preguntar por WhatsApp
               </a>
@@ -683,6 +668,98 @@
         </div>
       </div>
     </section>
+
+    <dialog class="reserva" id="reserva" aria-labelledby="reserva-titulo">
+      <div class="reserva__caja">
+        <button class="reserva__cerrar" type="button" data-reserva-cerrar aria-label="Cerrar la reserva de turno">&times;</button>
+
+        <header class="reserva__cabecera">
+          <p class="eyebrow">Reserva de turno</p>
+          <h3 id="reserva-titulo">Elegí el día y la hora</h3>
+        </header>
+
+        <p class="reserva__estado" data-reserva-estado role="status" aria-live="polite"></p>
+
+        <div data-reserva-panel hidden>
+          <div class="campo">
+            <label for="reserva-servicio">¿Qué necesitás?</label>
+            <select id="reserva-servicio" data-reserva-servicio></select>
+          </div>
+
+          <p class="reserva__rotulo" id="reserva-dias-rotulo">Días con atención</p>
+          <div class="reserva__dias" data-reserva-dias role="group" aria-labelledby="reserva-dias-rotulo" tabindex="-1"></div>
+
+          <p class="reserva__rotulo" id="reserva-horas-rotulo">Horarios libres</p>
+          <div class="reserva__horas" data-reserva-horas role="group" aria-labelledby="reserva-horas-rotulo"></div>
+
+          <form data-reserva-form novalidate>
+            <div class="campo">
+              <label for="reserva-nombre">Nombre y apellido <span aria-hidden="true">*</span></label>
+              <input id="reserva-nombre" name="nombre" type="text" autocomplete="name" maxlength="80" required>
+            </div>
+            <div class="campo">
+              <label for="reserva-telefono">Teléfono <span aria-hidden="true">*</span></label>
+              <input id="reserva-telefono" name="telefono" type="tel" inputmode="tel" autocomplete="tel"
+                     maxlength="20" required placeholder="099 123 456">
+            </div>
+            <div class="campo">
+              <label for="reserva-vehiculo">Vehículo <span aria-hidden="true">*</span></label>
+              <input id="reserva-vehiculo" name="vehiculo" type="text" maxlength="80" required
+                     placeholder="Marca, modelo y año">
+            </div>
+            <div class="campo">
+              <label for="reserva-email">Email (opcional)</label>
+              <input id="reserva-email" name="email" type="email" autocomplete="email" maxlength="120">
+            </div>
+            <div class="campo">
+              <label for="reserva-comentario">Comentario (opcional)</label>
+              <textarea id="reserva-comentario" name="comentario" rows="3" maxlength="500"></textarea>
+            </div>
+
+            <div class="oculto" aria-hidden="true">
+              <label for="reserva-empresa">Empresa</label>
+              <input id="reserva-empresa" name="empresa" type="text" tabindex="-1" autocomplete="off">
+            </div>
+
+            <button class="btn btn--primary btn--block" type="submit" data-reserva-enviar disabled>
+              Elegí un día y un horario
+            </button>
+            <p class="booking-hint">
+              ¿Algún problema para reservar?
+              <a href="https://wa.me/59891317613" target="_blank" rel="noopener" data-reserva-whatsapp-form>Confirmalo por WhatsApp</a>.
+            </p>
+          </form>
+        </div>
+
+        <div data-reserva-respaldo hidden>
+          <p class="booking-hint" data-reserva-respaldo-texto></p>
+          <a class="btn btn--whatsapp btn--block"
+             href="https://wa.me/59891317613?text=Hola%20Rosconi%20Garage%2C%20quiero%20pedir%20un%20turno."
+             target="_blank" rel="noopener">
+            Pedir turno por WhatsApp
+          </a>
+        </div>
+
+        <div data-reserva-exito hidden>
+          <h3 tabindex="-1" data-reserva-titulo-exito>Turno confirmado</h3>
+          <p class="reserva__resumen" data-reserva-resumen></p>
+          <p class="reserva__codigo">Código del turno: <strong data-reserva-codigo></strong></p>
+          <p class="booking-hint">
+            Guardá el código: con él podés ver o cancelar el turno desde la sección de turnos.
+          </p>
+          <div class="reserva__acciones">
+            <a class="btn btn--ghost" data-reserva-calendario href="#" target="_blank" rel="noopener">
+              Agregar a mi calendario
+            </a>
+            <a class="btn btn--whatsapp" data-reserva-whatsapp href="https://wa.me/59891317613"
+               target="_blank" rel="noopener">
+              Avisar por WhatsApp
+            </a>
+          </div>
+          <button class="btn btn--ghost btn--block" type="button" data-reserva-cerrar>Listo</button>
+        </div>
+      </div>
+    </dialog>
   </main>
 
   <footer class="footer">
@@ -784,8 +861,7 @@
       { "@type": "Country", "name": "Uruguay" }
     ],
     "sameAs": [
-      "https://www.instagram.com/rosconigarage/",
-      "https://cal.com/rosconigarage"
+      "https://www.instagram.com/rosconigarage/"
     ],
     "openingHoursSpecification": [
       {
@@ -852,7 +928,7 @@
       "name": "Reservar turno en el taller",
       "target": {
         "@type": "EntryPoint",
-        "urlTemplate": "https://cal.com/rosconigarage",
+        "urlTemplate": "https://jordanweb2016.github.io/Rosconi-Garage/#turnos",
         "inLanguage": "es",
         "actionPlatform": [
           "http://schema.org/DesktopWebPlatform",

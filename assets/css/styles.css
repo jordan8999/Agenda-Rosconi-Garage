@@ -740,18 +740,6 @@ ul {
 /* --------------------------------------------------------------------------
    9. Turnos / reserva online
    -------------------------------------------------------------------------- */
-.turnos__grid {
-  display: grid;
-  gap: clamp(20px, 3vw, 32px);
-}
-
-@media (min-width: 1000px) {
-  .turnos__grid {
-    grid-template-columns: 1fr 1fr;
-    align-items: start;
-  }
-}
-
 .lane__head {
   display: flex;
   flex-wrap: wrap;
@@ -767,27 +755,26 @@ ul {
   margin-bottom: 18px;
 }
 
-.booking-slot {
-  margin-top: 20px;
-}
-
-.booking-slot[hidden] {
-  display: none;
-}
-
-.cal-embed {
-  width: 100%;
-  min-height: 620px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  overflow: hidden;
-}
-
 .booking-hint {
   margin-top: 14px;
   font-size: 0.9rem;
   color: var(--muted);
+}
+
+.servicio__cta {
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.servicio__cta:hover {
+  color: var(--text);
 }
 
 .steps {
@@ -1220,6 +1207,244 @@ ul {
   .nav {
     transition: none;
   }
+}
+
+/* --------------------------------------------------------------------------
+   16. Reserva de turnos (dialogo y campos de formulario)
+   -------------------------------------------------------------------------- */
+.oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.campo {
+  margin-bottom: 16px;
+}
+
+.campo label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.campo input,
+.campo select,
+.campo textarea {
+  width: 100%;
+  padding: 12px 14px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.campo textarea {
+  resize: vertical;
+}
+
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  border-color: var(--accent);
+}
+
+.gestion__fila {
+  display: flex;
+  gap: 10px;
+}
+
+.gestion__fila input {
+  flex: 1;
+}
+
+.reserva {
+  width: min(96vw, 620px);
+  max-height: 92dvh;
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  overflow-y: auto;
+}
+
+.reserva::backdrop {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.reserva__caja {
+  position: relative;
+  padding: clamp(20px, 4vw, 30px);
+}
+
+.reserva__cerrar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.reserva__cabecera h3 {
+  margin-bottom: 0.2em;
+}
+
+.reserva__estado {
+  min-height: 1.5em;
+  margin: 8px 0 12px;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.reserva__estado[data-tipo="cargando"] {
+  color: var(--accent);
+}
+
+.reserva__estado[data-tipo="error"] {
+  color: #ffb4a2;
+}
+
+.reserva__estado[data-tipo="ok"] {
+  color: #9ae6b4;
+}
+
+.reserva__rotulo {
+  margin: 18px 0 8px;
+  font-size: 0.76rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.reserva__dias {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.dia {
+  display: grid;
+  gap: 2px;
+  min-width: 92px;
+  padding: 10px 12px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.dia:hover {
+  border-color: var(--accent);
+}
+
+.dia[aria-current="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.dia__corta {
+  font-weight: 700;
+}
+
+.dia__nota {
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.reserva__horas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.hora {
+  display: grid;
+  gap: 2px;
+  padding: 12px 10px;
+  font: inherit;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.hora:hover {
+  border-color: var(--accent);
+}
+
+.hora[aria-current="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.hora__nota {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hora[aria-current="true"] .hora__nota {
+  color: var(--on-accent);
+}
+
+.reserva__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.reserva__resumen {
+  font-weight: 700;
+}
+
+.reserva__codigo {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.reserva__codigo strong {
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+[data-reserva-whatsapp-form][data-destacar="true"] {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
 }
 
 

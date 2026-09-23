@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es-UY">
+<head>
+  <meta charset="utf-8">
+  <title>Pruebas de integración de la reserva de turnos</title>
+  <style>
+    body { font: 14px/1.5 system-ui, sans-serif; background: #111; color: #eee; margin: 0; padding: 16px; }
+    iframe { width: 100%; height: 620px; border: 1px solid #333; border-radius: 8px; background: #0a0a0a; }
+    pre { white-space: pre-wrap; background: #000; padding: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Pruebas de integración — reserva de turnos</h1>
+  <p>Solo para desarrollo: carga el sitio real en un iframe y lo maneja como una persona,
+     contra el mock local (<code>python tools/mock-turnos.py --puerto 8131</code>).</p>
+
+  <iframe id="marco" title="Sitio bajo prueba"></iframe>
+  <pre id="resultado">EJECUTANDO…</pre>
+
+  <script>
+    (function () {
+      "use strict";
+      var marco = document.getElementById("marco");
+      var salida = document.getElementById("resultado");
+      var lineas = [];
+
+      function registrar(condicion, descripcion) {
+        lineas.push((condicion ? "OK    " : "FALLA ") + " " + descripcion);
+        salida.textContent = lineas.join("\n");
+      }
+
+      function esperar(condicion, descripcion, limite) {
+        var intentos = Math.round((limite || 30000) / 100);
+        var paso = 0;
+        return new Promise(function (listo) {
+          (function revisar() {
+            var valor = false;
+            try {
+              valor = condicion();
+            } catch (error) {
+              valor = false;
+            }
+            if (valor) {
+              registrar(true, descripcion);
+              listo(true);
+              return;
+            }
+            paso += 1;
+            if (paso > intentos) {
+              registrar(false, "espera agotada: " + descripcion);
+              listo(false);
+              return;
+            }
+            window.setTimeout(revisar, 100);
+          })();
+        });
+      }
+
+      var iniciada = false;
+      var parametroMock = "http://127.0.0.1:8131";
+      var leido = new URLSearchParams(window.location.search).get("mock");
+      if (leido && /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(leido)) {
+        parametroMock = leido;
+      }
+
+      marco.addEventListener("load", function () {
+        var doc = marco.contentDocument;
+        var win = marco.contentWindow;
+        // Ignora la carga vacía inicial del iframe.
+        if (iniciada || !doc || !doc.getElementById("reserva")) {
+          return;
+        }
+        iniciada = true;
+        var api = win.RosconiTurnos;
+        var elegido = {};
+
+        win.addEventListener("error", function (evento) {
+          lineas.push("INFO   error JS en la pagina: " + evento.message);
+          salida.textContent = lineas.join("\n");
+        });
+        win.addEventListener("unhandledrejection", function (evento) {
+          var razon = evento.reason;
+          lineas.push("INFO   promesa rechazada: " + ((razon && razon.message) || razon));
+          salida.textContent = lineas.join("\n");
+        });
+
+        registrar(Boolean(api), "el modulo de reservas carga en la pagina real");
+        if (!api) {
+          salida.setAttribute("data-estado", "FALLA");
+          return;
+        }
+
+        esperar(function () {
+          return doc.querySelectorAll(".dia").length > 0;
+        }, "la agenda pinta los dias disponibles")
+          .then(function (hayDias) {
+            if (!hayDias) {
+              throw new Error("la agenda no devolvio dias");
+            }
+            registrar(doc.querySelectorAll(".dia").length >= 5, "hay varios dias ofrecidos");
+            registrar(Boolean(doc.querySelector("[data-abrir-reserva]")), "existe el boton de reservar");
+            // Regresión: abrir desde una tarjeta debe recalcular la agenda para
+            // ese trabajo (la duración cambia los horarios que se pueden ofrecer).
+            var tarjeta = doc.querySelector('[data-servicio="Mecánica general"]');
+            registrar(Boolean(tarjeta), "cada tarjeta de servicio tiene su boton de reservar");
+            tarjeta.click();
+            return esperar(function () {
+              var seleccion = doc.querySelector("[data-reserva-servicio]");
+              return doc.getElementById("reserva").open && seleccion &&
+                seleccion.value === tarjeta.getAttribute("data-servicio") &&
+                api.estado.agenda && api.estado.agenda.servicio === tarjeta.getAttribute("data-servicio");
+            }, "el dialogo se abre y la agenda se recalcula para el trabajo elegido");
+          })
+          .then(function () {
+            return esperar(function () {
+              return doc.querySelectorAll(".hora").length > 0;
+            }, "la agenda pinta los horarios");
+          })
+          .then(function () {
+            var dia = doc.querySelector(".dia");
+            elegido.fecha = dia.getAttribute("data-fecha");
+            registrar(/^\d{4}-\d{2}-\d{2}$/.test(elegido.fecha), "el dia elegido tiene fecha valida");
+            dia.click();
+            return esperar(function () {
+              return doc.querySelectorAll(".hora").length > 0;
+            }, "al elegir un dia se listan sus horarios");
+          })
+          .then(function () {
+            var hora = doc.querySelector(".hora");
+            elegido.hora = hora.getAttribute("data-hora");
+            hora.click();
+            return esperar(function () {
+              var boton = doc.querySelector("[data-reserva-enviar]");
+              return boton && !boton.disabled && boton.textContent.indexOf("Confirmar") === 0;
+            }, "al elegir un horario se habilita la confirmacion");
+          })
+          .then(function () {
+            doc.querySelector("[data-reserva-enviar]").click();
+            return esperar(function () {
+              var estado = doc.querySelector("[data-reserva-estado]");
+              return estado && estado.getAttribute("data-tipo") === "error";
+            }, "sin datos cargados, avisa que faltan campos");
+          })
+          .then(function () {
+            doc.getElementById("reserva-nombre").value = "Prueba Integracion";
+            doc.getElementById("reserva-telefono").value = "099123456";
+            doc.getElementById("reserva-vehiculo").value = "Fiat Uno 2010";
+            doc.querySelector("[data-reserva-form]").dispatchEvent(
+              new win.Event("submit", { bubbles: true, cancelable: true })
+            );
+            return esperar(function () {
+              return !doc.querySelector("[data-reserva-exito]").hidden;
+            }, "la reserva se confirma y aparece el resumen");
+          })
+          .then(function () {
+            var codigo = doc.querySelector("[data-reserva-codigo]").textContent.trim();
+            elegido.codigo = codigo;
+            registrar(/^RG-[A-Z0-9]{8}$/.test(codigo), "el codigo de la reserva es valido (" + codigo + ")");
+            registrar(doc.querySelector("[data-reserva-resumen]").textContent.indexOf(elegido.hora) > -1,
+                      "el resumen muestra la hora elegida");
+            registrar(doc.querySelector("[data-reserva-calendario]").href.indexOf("calendar.google.com") > -1,
+                      "ofrece agregar el turno al calendario");
+            var whatsapp = doc.querySelector("[data-reserva-whatsapp]").href;
+            registrar(codigo.length > 6 && whatsapp.indexOf("wa.me") > -1 && whatsapp.indexOf(codigo) > -1,
+                      "el aviso por WhatsApp lleva el codigo del turno");
+
+            doc.querySelectorAll("[data-reserva-cerrar]")[0].click();
+            win.confirm = function () { return true; };
+            doc.querySelector("[data-gestion-codigo]").value = codigo;
+            doc.querySelector("[data-gestion-buscar]").click();
+            return esperar(function () {
+              return doc.querySelector("[data-gestion-resultado]").getAttribute("data-tipo") === "ok";
+            }, "el cliente puede consultar su turno con el codigo");
+          })
+          .then(function () {
+            registrar(!doc.querySelector("[data-gestion-cancelar]").hidden,
+                      "se ofrece cancelar el turno consultado");
+            doc.querySelector("[data-gestion-cancelar]").click();
+            return esperar(function () {
+              return doc.querySelector("[data-gestion-resultado]").textContent.indexOf("cancelado") > -1;
+            }, "el turno se cancela y se avisa en pantalla");
+          })
+          .then(function () {
+            // Se deja el dialogo abierto: sirve para revisar el diseño a ojo.
+            doc.querySelector("[data-abrir-reserva]").click();
+            return esperar(function () {
+              var estado = doc.querySelector("[data-reserva-estado]");
+              return doc.getElementById("reserva").open &&
+                doc.querySelectorAll(".dia").length > 0 &&
+                estado.textContent === "";
+            }, "al reabrir el dialogo se muestra la agenda actualizada");
+          })
+          .then(function () {
+            var fallas = lineas.filter(function (linea) {
+              return linea.indexOf("FALLA") === 0;
+            });
+            var estado = doc.querySelector("[data-reserva-estado]");
+            if (estado && estado.textContent) {
+              lineas.push("INFO   mensaje en pantalla: " + estado.textContent);
+            }
+            var seleccion = doc.querySelector("[data-reserva-servicio]");
+            lineas.push("INFO   eleccion: " + api.estado.fecha + " " + api.estado.hora +
+              " | servicio del formulario: " + (seleccion ? seleccion.value : "?") +
+              " | servicio de la agenda: " + (api.estado.agenda ? api.estado.agenda.servicio : "ya usado") +
+              " | duracion: " + (api.estado.agenda ? api.estado.agenda.duracionMinutos : "?"));
+            lineas.push("");
+            lineas.push("RESULTADO: " + (lineas.length - fallas.length - 1) + " OK / " +
+              fallas.length + " FALLA(S)");
+            salida.textContent = lineas.join("\n");
+            salida.setAttribute("data-estado", fallas.length ? "FALLA" : "OK");
+          })
+          .catch(function (error) {
+            var estado = doc.querySelector("[data-reserva-estado]");
+            lineas.push("FALLA  se corto la prueba: " + error.message +
+              (estado && estado.textContent ? " | mensaje en pantalla: " + estado.textContent : ""));
+            salida.textContent = lineas.join("\n");
+            salida.setAttribute("data-estado", "FALLA");
+          });
+      });
+
+      marco.src = "../index.html?turnos=" + encodeURIComponent(parametroMock);
+    })();
+  </script>
+</body>
+</html>

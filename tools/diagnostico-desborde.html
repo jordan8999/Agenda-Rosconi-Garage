@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es-UY">
+<head>
+  <meta charset="utf-8">
+  <title>Diagnóstico de desborde horizontal (desarrollo)</title>
+  <style>
+    body { font: 13px/1.5 ui-monospace, monospace; background: #111; color: #eee; margin: 0; padding: 12px; }
+    iframe { border: 1px solid #444; background: #000; display: block; margin-bottom: 12px; }
+    pre { white-space: pre-wrap; background: #000; padding: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Desborde horizontal por ancho</h1>
+  <iframe id="marco" title="Sitio medido"></iframe>
+  <pre id="salida">midiendo…</pre>
+  <script>
+    (function () {
+      "use strict";
+      var marco = document.getElementById("marco");
+      var salida = document.getElementById("salida");
+      var anchos = [320, 360, 390, 414, 480, 640, 768, 1024, 1440];
+      var lineas = [];
+      var iniciada = false;
+
+      function describir(el) {
+        var nombre = el.tagName.toLowerCase();
+        if (el.id) { nombre += "#" + el.id; }
+        if (el.className && typeof el.className === "string") {
+          nombre += "." + el.className.trim().split(/\s+/).slice(0, 3).join(".");
+        }
+        return nombre;
+      }
+
+      function medir(ancho) {
+        marco.style.width = ancho + "px";
+        return new Promise(function (listo) {
+          window.setTimeout(function () {
+            var doc = marco.contentDocument;
+            var raiz = doc.documentElement;
+            var culpables = [];
+            Array.prototype.slice.call(doc.querySelectorAll("body *")).forEach(function (el) {
+              var caja = el.getBoundingClientRect();
+              if (caja.width === 0 && caja.height === 0) { return; }
+              if (caja.right > ancho + 1 || caja.left < -1) {
+                culpables.push(describir(el) + "  [" + Math.round(caja.left) + " → " + Math.round(caja.right) + "]");
+              }
+            });
+            lineas.push("ancho " + ancho + " → scrollWidth " + raiz.scrollWidth +
+              (raiz.scrollWidth > ancho ? "  DESBORDA" : "  ok"));
+            culpables.slice(0, 8).forEach(function (texto) { lineas.push("     " + texto); });
+            if (culpables.length > 8) { lineas.push("     … y " + (culpables.length - 8) + " más"); }
+            salida.textContent = lineas.join("\n");
+            listo();
+          }, 400);
+        });
+      }
+
+      marco.addEventListener("load", function () {
+        if (iniciada || !marco.contentDocument || !marco.contentDocument.querySelector(".hero")) {
+          return;
+        }
+        iniciada = true;
+        var cadena = Promise.resolve();
+        anchos.forEach(function (ancho) { cadena = cadena.then(function () { return medir(ancho); }); });
+        cadena.then(function () {
+          // Deja el iframe en ancho de móvil para revisarlo a ojo.
+          marco.style.width = "414px";
+          marco.style.height = "1200px";
+          lineas.push("");
+          lineas.push("FIN");
+          salida.textContent = lineas.join("\n");
+        });
+      });
+
+      marco.style.width = "414px";
+      marco.style.height = "900px";
+      marco.src = "../index.html";
+    })();
+  </script>
+</body>
+</html>
