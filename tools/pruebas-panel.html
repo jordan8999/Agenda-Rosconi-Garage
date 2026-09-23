@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es-UY">
+<head>
+  <meta charset="utf-8">
+  <title>Pruebas del panel del taller</title>
+  <style>
+    body { font: 14px/1.5 system-ui, sans-serif; background: #111; color: #eee; margin: 0; padding: 16px; }
+    iframe { width: 100%; height: 640px; border: 1px solid #333; border-radius: 8px; background: #0a0a0a; }
+    pre { white-space: pre-wrap; background: #000; padding: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Pruebas de integración — panel del taller</h1>
+  <p>Maneja <code>panel.html</code> como lo haría el dueño, contra el mock local
+     (<code>python tools/mock-turnos.py --puerto 8131</code>).</p>
+
+  <iframe id="marco" src="../panel.html?turnos=http%3A%2F%2F127.0.0.1%3A8131" title="Panel bajo prueba"></iframe>
+  <pre id="resultado">EJECUTANDO…</pre>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var MOCK = "http://127.0.0.1:8131";
+      var CLAVE_PUBLICA = "rosconi-artigas-turnos-2026-k72b";
+      var CLAVE_ADMIN = "rg-panel-j72k9x4m-d7qm";
+      var CLAVE_MALA = "clave-que-no-sirve";
+
+      var marco = document.getElementById("marco");
+      var salida = document.getElementById("resultado");
+      var lineas = [];
+      var iniciada = false;
+      var pruebas = 0;
+      var fallas = [];
+
+      function registrar(condicion, descripcion) {
+        pruebas += 1;
+        if (!condicion) {
+          fallas.push(descripcion);
+        }
+        lineas.push((condicion ? "OK    " : "FALLA ") + " " + descripcion);
+        salida.textContent = lineas.join("\n");
+      }
+
+      function info(texto) {
+        lineas.push("INFO   " + texto);
+        salida.textContent = lineas.join("\n");
+      }
+
+      function esperar(condicion, descripcion, limite) {
+        var intentos = Math.round((limite || 20000) / 100);
+        var paso = 0;
+        return new Promise(function (listo) {
+          (function revisar() {
+            var valor = false;
+            try {
+              valor = condicion();
+            } catch (error) {
+              valor = false;
+            }
+            if (valor) {
+              registrar(true, descripcion);
+              listo(true);
+              return;
+            }
+            paso += 1;
+            if (paso > intentos) {
+              registrar(false, "espera agotada: " + descripcion);
+              listo(false);
+              return;
+            }
+            window.setTimeout(revisar, 100);
+          })();
+        });
+      }
+
+      function pedirMock(cuerpo) {
+        return fetch(MOCK + "/", {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(cuerpo)
+        }).then(function (respuesta) { return respuesta.json(); });
+      }
+
+      function agendaMock() {
+        var url = MOCK + "/?action=agenda&clave=" + encodeURIComponent(CLAVE_PUBLICA) +
+          "&servicio=" + encodeURIComponent("Reprogramación electrónica") + "&dias=14";
+        return fetch(url).then(function (respuesta) { return respuesta.json(); });
+      }
+
+      /** Primer horario libre de la agenda del mock. */
+      function primerLibre(datos) {
+        var dias = datos.dias || [];
+        for (var i = 0; i < dias.length; i += 1) {
+          if (dias[i].turnos && dias[i].turnos.length) {
+            return { fecha: dias[i].fecha, hora: dias[i].turnos[0].hora };
+          }
+        }
+        return null;
+      }
+
+      marco.addEventListener("load", function () {
+        var doc = marco.contentDocument;
+        if (iniciada || !doc || !doc.querySelector("[data-panel-ingreso]")) {
+          return;
+        }
+        iniciada = true;
+        var win = marco.contentWindow;
+        var sembrado = {};
+        var codigoSembrado = "";
+        var codigoAnotado = "";
+
+        win.addEventListener("error", function (evento) {
+          info("error JS en el panel: " + evento.message);
+        });
+        win.addEventListener("unhandledrejection", function (evento) {
+          var razon = evento.reason;
+          info("promesa rechazada: " + ((razon && razon.message) || razon));
+        });
+
+        if (!doc.querySelector("[data-panel-contenido]").hidden) {
+          doc.querySelector("[data-panel-salir]").click();
+        }
+
+        registrar(!doc.querySelector("[data-panel-ingreso]").hidden,
+                  "el panel pide la clave antes de mostrar la agenda");
+
+        doc.querySelector("#panel-clave").value = CLAVE_MALA;
+        doc.querySelector("[data-panel-form-clave]").dispatchEvent(
+          new win.Event("submit", { bubbles: true, cancelable: true })
+        );
+        esperar(function () {
+          var aviso = doc.querySelector("[data-panel-aviso]");
+          return aviso.getAttribute("data-tipo") === "error" && aviso.textContent.length > 10;
+        }, "una clave equivocada no abre el panel")
+          .then(function () {
+            registrar(!doc.querySelector("[data-panel-ingreso]").hidden,
+                      "con la clave equivocada sigue en el ingreso");
+            doc.querySelector("#panel-clave").value = CLAVE_ADMIN;
+            doc.querySelector("[data-panel-form-clave]").dispatchEvent(
+              new win.Event("submit", { bubbles: true, cancelable: true })
+            );
+            return esperar(function () {
+              return !doc.querySelector("[data-panel-contenido]").hidden &&
+                doc.querySelectorAll(".tira__dia").length > 5;
+            }, "con la clave del taller se abre la agenda de 14 días");
+          })
+          .then(function () {
+            registrar(doc.querySelector("[data-panel-titulo-dia]").textContent.length > 3,
+                      "el panel muestra el día en curso");
+            registrar(doc.querySelectorAll(".tira__dia").length >= 14,
+                      "la tira de días trae los 14 días con su estado");
+            return agendaMock().then(function (agenda) {
+              var libre = primerLibre(agenda);
+              sembrado = libre || {};
+              registrar(Boolean(libre), "hay un horario libre para ver un turno en el panel");
+              if (!libre) {
+                throw new Error("el mock no tiene horarios libres");
+              }
+              return pedirMock({
+                accion: "crear", clave: CLAVE_PUBLICA,
+                fecha: libre.fecha, hora: libre.hora,
+                servicio: "Reprogramación electrónica",
+                nombre: "Prueba Panel", telefono: "099555777",
+                vehiculo: "Renault Sandero 2019", email: "",
+                comentario: "Revisar la alarma y el cierre centralizado", empresa: ""
+              });
+            });
+          })
+          .then(function (respuesta) {
+            codigoSembrado = respuesta && respuesta.codigo ? respuesta.codigo : "";
+            registrar(Boolean(codigoSembrado), "se agendó un turno de prueba en el taller");
+            doc.querySelector("[data-panel-refrescar]").click();
+            return esperar(function () {
+              var chip = doc.querySelector('[data-fecha-dia="' + sembrado.fecha + '"]');
+              return chip && chip.textContent.indexOf("turno") > -1;
+            }, "el panel refleja el turno nuevo al actualizar");
+          })
+          .then(function () {
+            var fecha = doc.querySelector("[data-panel-fecha]");
+            fecha.value = sembrado.fecha;
+            fecha.dispatchEvent(new win.Event("change", { bubbles: true }));
+            return esperar(function () {
+              return doc.querySelector('[data-codigo="' + codigoSembrado + '"]') !== null;
+            }, "el turno aparece en el día que corresponde");
+          })
+          .then(function () {
+            registrar(doc.querySelectorAll(".libres__hora").length > 3,
+                      "el panel muestra los lugares libres del día elegido");
+          })
+          .then(function () {
+            var tarjeta = doc.querySelector('[data-codigo="' + codigoSembrado + '"]');
+            registrar(Boolean(tarjeta), "el panel dibuja la tarjeta del turno");
+            if (!tarjeta) {
+              throw new Error("no se dibujó la tarjeta");
+            }
+            registrar(tarjeta.textContent.indexOf("Renault Sandero 2019") > -1,
+                      "la tarjeta muestra el auto que llega");
+            registrar(tarjeta.textContent.indexOf("Prueba Panel") > -1,
+                      "la tarjeta muestra el cliente");
+            registrar(tarjeta.textContent.indexOf("Revisar la alarma") > -1,
+                      "la tarjeta muestra qué hay que hacer");
+            registrar(tarjeta.getAttribute("data-linea") === "elevador" ||
+                      tarjeta.getAttribute("data-linea") === "piso",
+                      "la tarjeta indica la línea del taller");
+            var whats = tarjeta.querySelector(".btn--whatsapp");
+            var llamar = tarjeta.querySelector(".btn--llamar");
+            registrar(Boolean(whats) && whats.href.indexOf("wa.me/59899555777") > -1,
+                      "el botón de WhatsApp apunta al cliente");
+            registrar(Boolean(llamar) && llamar.href.indexOf("tel:+59899555777") > -1,
+                      "el botón de llamar apunta al cliente");
+            tarjeta.querySelector("[data-listo-codigo]").click();
+            return esperar(function () {
+              var actual = doc.querySelector('[data-codigo="' + codigoSembrado + '"]');
+              return actual && actual.getAttribute("data-listo") === "true";
+            }, "el taller marca el trabajo como listo");
+          })
+          .then(function () {
+            var seleccion = doc.querySelector("[data-anotar-servicio]");
+            registrar(seleccion.options.length > 3,
+                      "el formulario ofrece los trabajos del taller (" +
+                      seleccion.options.length + " opciones)");
+            doc.querySelector("[data-anotar-fecha]").value = sembrado.fecha;
+            doc.querySelector("[data-anotar-hora]").value = "16:30";
+            doc.querySelector("[data-anotar-nombre]").value = "Cliente Telefónico";
+            doc.querySelector("[data-anotar-telefono]").value = "099666111";
+            doc.querySelector("[data-anotar-vehiculo]").value = "Peugeot Partner 2015";
+            doc.querySelector("[data-anotar-comentario]").value = "Quedó agendado";
+            doc.querySelector("[data-panel-form-anotar]").dispatchEvent(
+              new win.Event("submit", { bubbles: true, cancelable: true })
+            );
+            return esperar(function () {
+              var aviso = doc.querySelector("[data-panel-aviso]");
+              return aviso.getAttribute("data-tipo") === "ok" &&
+                aviso.textContent.indexOf("Turno guardado") > -1;
+            }, "el taller anota un turno que llegó por teléfono");
+          })
+          .then(function () {
+            var aviso = doc.querySelector("[data-panel-aviso]");
+            info("después de anotar, la pantalla decía: «" + aviso.textContent + "»");
+            codigoAnotado = (aviso.textContent.match(/RG-[A-Z0-9]{8}/) || [])[0] || "";
+            registrar(Boolean(codigoAnotado), "el turno anotado recibe su código");
+            return esperar(function () {
+              return Boolean(codigoAnotado) &&
+                doc.querySelector('[data-codigo="' + codigoAnotado + '"]') !== null;
+            }, "el turno anotado aparece en la agenda del día");
+          })
+          .then(function () {
+            var tarjeta = doc.querySelector('[data-codigo="' + codigoAnotado + '"]');
+            registrar(Boolean(tarjeta) &&
+                      tarjeta.textContent.indexOf("anotado por teléfono") > -1,
+                      "la tarjeta distingue los turnos anotados a mano");
+          })
+          .then(function () {
+            doc.querySelector('[data-panel-vista="proximos"]').click();
+            return esperar(function () {
+              return !doc.querySelector('[data-panel-seccion="proximos"]').hidden &&
+                doc.querySelectorAll(".proximo").length >= 14;
+            }, "la vista de próximos 14 días lista todos los días");
+          })
+          .then(function () {
+            var conAutos = Array.prototype.filter.call(doc.querySelectorAll(".proximo"),
+              function (bloque) {
+                return bloque.querySelectorAll(".proximo__lista li").length > 0;
+              });
+            registrar(conAutos.length >= 1, "los días con autos muestran el detalle");
+            doc.querySelector('[data-panel-vista="buscar"]').click();
+            doc.querySelector("[data-panel-texto-buscar]").value = "Sandero";
+            doc.querySelector("[data-panel-form-buscar]").dispatchEvent(
+              new win.Event("submit", { bubbles: true, cancelable: true })
+            );
+            return esperar(function () {
+              return doc.querySelectorAll("[data-panel-resultados] .turno").length >= 1;
+            }, "el buscador encuentra el turno por el auto");
+          })
+          .then(function () {
+            doc.querySelector("[data-panel-salir]").click();
+            return esperar(function () {
+              return !doc.querySelector("[data-panel-ingreso]").hidden;
+            }, "el botón salir cierra la sesión del panel");
+          })
+          .then(function () {
+            lineas.push("");
+            lineas.push("RESULTADO: " + (pruebas - fallas.length) + " OK / " +
+              fallas.length + " FALLA(S)");
+            salida.textContent = lineas.join("\n");
+            salida.setAttribute("data-estado", fallas.length ? "FALLA" : "OK");
+          })
+          .catch(function (error) {
+            var estado = doc.querySelector("[data-panel-aviso]");
+            lineas.push("FALLA  se cortó la prueba: " + error.message);
+            if (estado && estado.textContent) {
+              lineas.push("INFO   pantalla: " + estado.textContent);
+            }
+            if (Object.keys(sembrado).length) {
+              lineas.push("INFO   día usado: " + sembrado.fecha + " " + sembrado.hora);
+            }
+            lineas.push("");
+            lineas.push("RESULTADO: " + (pruebas - fallas.length) + " OK / " +
+              (fallas.length + 1) + " FALLA(S)");
+            salida.textContent = lineas.join("\n");
+            salida.setAttribute("data-estado", "FALLA");
+          });
+      });
+    })();
+  </script>
+</body>
+</html>
+

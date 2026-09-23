@@ -114,6 +114,24 @@ Para cambiar la hora del resumen o mandarlo a otra casilla se toca `CONFIG.RESUM
 `CONFIG.RESUMEN_MINUTO` y `CONFIG.RESUMEN_EMAIL` (vacío = la cuenta que desplegó el script)
 y se vuelve a ejecutar `instalar`.
 
+## El panel del taller
+
+La página `panel.html` del sitio es el tablero privado del dueño: agenda del día,
+próximos 14 días, búsqueda, WhatsApp y llamada en un clic, marcar un trabajo como listo y
+anotar los turnos que llegan por teléfono.
+
+**Clave del panel:** es distinta de la clave pública y **no está en el repositorio**. Se
+crea sola la primera vez que se ejecuta `instalar` (aparece en el registro como
+`CLAVE DEL PANEL DEL TALLER: rg-panel-...`) y se guarda en las propiedades del script, así
+no queda publicada. Si alguna vez se olvida: ejecutar `instalar` de nuevo y leer el registro.
+Para cambiarla, borrar la propiedad `claveAdmin` del proyecto (Configuración del proyecto >
+Propiedades de la secuencia de comandos) y volver a ejecutar `instalar`; después hay que
+escribirla otra vez en el panel.
+
+Todas las acciones del panel (`panel`, `buscar`, `anotar`, `listo`, `estado`) exigen esa
+clave: **la clave pública del sitio no da acceso al panel**. Se puede comprobar con la
+prueba del contrato, que verifica justamente eso.
+
 ## Cambiar algo después
 
 Si se edita `Code.gs`, hay que volver a implementar: **Implementar > Administrar

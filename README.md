@@ -19,18 +19,22 @@ reservados** con una agenda propia (Google Calendar + Google Apps Script, sin pl
 ├─ robots.txt                 # Indexación + referencia al sitemap
 ├─ sitemap.xml                # Mapa del sitio (con imágenes)
 ├─ site.webmanifest           # Manifest para "agregar a pantalla de inicio"
+├─ panel.html                 # Panel privado del taller (agenda del día, WhatsApp, anotar)
 ├─ assets/
 │  ├─ css/styles.css          # Única hoja de estilos (design tokens + componentes)
+│  ├─ css/panel.css           # Estilos del panel del taller (incluye versión para imprimir)
 │  ├─ js/main.js              # Navegación, secciones activas, lightbox de la galería
 │  ├─ js/booking.js           # Reserva de turnos: agenda, confirmación, consulta y cancelación
+│  ├─ js/panel.js             # Panel del taller: día, próximos 14 días, buscar, anotar, listo
 │  ├─ fonts/                  # Bebas Neue auto-hospedada (13 KB, sin Google Fonts en runtime)
 │  ├─ icons/                  # favicon set + logo del taller
 │  └─ img/                    # Fotos optimizadas (WebP + JPG de respaldo)
 └─ tools/
    ├─ appsscript/             # Backend de turnos (Code.gs + appsscript.json + guía)
    ├─ mock-turnos.py          # Backend falso para probar en local (mismo contrato)
-   ├─ pruebas-turnos.py       # 77 pruebas del contrato de reservas (mock o backend real)
+   ├─ pruebas-turnos.py       # 106 pruebas del contrato (reservas + panel del taller)
    ├─ pruebas-ui.html         # Pruebas de integración manejando el sitio en un navegador
+   ├─ pruebas-panel.html      # Pruebas de integración del panel (clave, agenda, anotar, listo)
    ├─ pruebas-sintaxis.html   # Compila los scripts con el parser del navegador
    ├─ diagnostico-endpoint.html # Consulta el backend real desde el navegador
    ├─ diagnostico-desborde.html # Mide desborde horizontal en 320–1440 px
@@ -142,13 +146,17 @@ agregarle `deja: true`.
 
 ```powershell
 python tools/mock-turnos.py        # backend falso en http://127.0.0.1:8130
-python tools/pruebas-turnos.py     # 77 pruebas del contrato (cupos, límites, modalidades, ficha del taller)
+python tools/pruebas-turnos.py     # 106 pruebas del contrato (reservas, límites, panel del taller)
 python -m http.server 8125         # sitio; después abrir tools/pruebas-ui.html
 ```
 
 `tools/pruebas-ui.html` maneja el sitio real dentro de un iframe (abrir la agenda, elegir día y
 hora, confirmar, consultar y cancelar) contra el mock. Para apuntar el sitio al mock, agregar
 `?turnos=http://127.0.0.1:8130` a la URL (por seguridad solo se aceptan direcciones locales).
+
+`tools/pruebas-panel.html` hace lo mismo con el panel del taller: ingresa con la clave, revisa
+la agenda del día, los botones de contacto, marca un trabajo como listo, anota un turno por
+teléfono, recorre los próximos 14 días y busca un cliente. Usa el mock en el puerto 8131.
 
 Otros dos verificadores de desarrollo, también desde el servidor local:
 
@@ -160,6 +168,28 @@ Otros dos verificadores de desarrollo, también desde el servidor local:
 
 Con `tools/pruebas-ui.html?real` la prueba de integración corre contra el **backend desplegado**
 en vez del mock: crea un turno real en el calendario del taller y lo cancela al final.
+
+## El panel del taller (para el dueño)
+
+Además del calendario, el sitio incluye una **página privada** para el taller:
+
+**https://jordan8999.github.io/Agenda-Rosconi-Garage/panel.html**
+
+- Entra con la **clave del panel** (la muestra `instalar` en el registro de Apps Script; es
+  distinta de la clave pública del sitio y queda guardada solo en ese dispositivo).
+- **Día**: la agenda real del día, un auto por tarjeta: hora, auto, trabajo, cliente,
+  **botón de WhatsApp y de llamar**, la línea interna (elevador o piso) y el comentario de
+  qué hay que hacer. Incluye "lugares libres" y un botón para imprimir la hoja del día.
+- **Próximos 14 días**: una línea por día con los autos agendados, para ver la carga de
+  trabajo de un vistazo.
+- **Buscar**: por cliente, teléfono, auto o código.
+- **Anotar un turno**: para los clientes que llaman por teléfono (sin la anticipación de
+  24 h ni los límites antiabuso de la web, que existen solo para la reserva pública), y
+  **Marcar listo para retirar** en cada tarjeta.
+
+La página no se indexa (`noindex` + `robots.txt`) y el acceso está protegido con una clave
+propia que **no vive en el repositorio**: se genera al ejecutar `instalar` y se guarda en las
+propiedades del script.
 
 ## Lo que hay que mantener al día
 

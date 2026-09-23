@@ -22,6 +22,7 @@ import urllib.request
 from datetime import date, datetime, timedelta
 
 CLAVE = "rosconi-artigas-turnos-2026-k72b"
+CLAVE_ADMIN = "rg-panel-j72k9x4m-d7qm"
 SERVICIO = "Service completo y lubricentro"
 RESULTADOS: list[tuple[bool, str]] = []
 
@@ -77,6 +78,16 @@ def control(url: str, accion: str, valor: str = "") -> dict:
         return json.loads(respuesta.read().decode("utf-8"))
 
 
+def panel(url: str, accion: str, extra: dict | None = None,
+          clave_admin: str | None = None) -> dict:
+    """Peticion al panel del taller (acciones que exigen clave de administracion)."""
+    cuerpo = {"accion": accion,
+              "claveAdmin": CLAVE_ADMIN if clave_admin is None else clave_admin}
+    if extra:
+        cuerpo.update(extra)
+    return pedir(url, "/", cuerpo)
+
+
 def verificar(condicion: bool, descripcion: str) -> None:
     RESULTADOS.append((bool(condicion), descripcion))
     print(f"  {'OK   ' if condicion else 'FALLA'}  {descripcion}")
@@ -120,13 +131,16 @@ def turno_en(agenda: dict, fecha: str, hora: str) -> dict | None:
 
 
 def main() -> int:
-    global CLAVE
+    global CLAVE, CLAVE_ADMIN
     parser = argparse.ArgumentParser(description="Pruebas del contrato de turnos.")
     parser.add_argument("--url", default="http://127.0.0.1:8130")
     parser.add_argument("--clave", default=CLAVE, help="Clave de instalación del backend.")
+    parser.add_argument("--clave-admin", dest="clave_admin", default=CLAVE_ADMIN,
+                        help="Clave del panel (la genera `instalar` en Apps Script).")
     args = parser.parse_args()
     url = args.url.rstrip("/")
     CLAVE = args.clave
+    CLAVE_ADMIN = args.clave_admin
     es_local = "127.0.0.1" in url or "localhost" in url
     print(f"\n=== Pruebas de turnos contra {url} ===\n")
 
@@ -386,6 +400,108 @@ def main() -> int:
                                      "codigo": pendiente}).get("ok")
                     for pendiente in [corto.get("codigo", ""), entrega.get("codigo", "")]]
         verificar(all(limpieza), "se cancelan los turnos de la prueba de la ficha")
+
+    print("\n10. Panel del taller")
+    if not panel(url, "estado").get("version"):
+        print("  (se omite: el backend desplegado todavia no tiene el panel)")
+    else:
+        verificar(panel(url, "panel", {"dias": 3}, "").get("error") == "clave_admin_invalida",
+                  "el panel no abre sin clave de administracion")
+        verificar(panel(url, "panel", {"dias": 3}, CLAVE).get("error") == "clave_admin_invalida",
+                  "la clave publica del sitio NO sirve para el panel")
+        verificar(panel(url, "panel", {"dias": 3}, "otra-clave").get("error")
+                  == "clave_admin_invalida", "una clave equivocada no abre el panel")
+
+        tablero = panel(url, "panel", {"dias": 14})
+        verificar(tablero.get("ok") is True, "el taller abre el tablero con su clave")
+        dias_tablero = tablero.get("agenda", [])
+        verificar(len(dias_tablero) == 14, "el tablero trae 14 dias de una sola vez")
+        verificar(all("turnos" in dia and "libres" in dia for dia in dias_tablero),
+                  "cada dia trae sus turnos y sus lugares libres")
+        verificar(any(dia["libres"] for dia in dias_tablero),
+                  "el tablero muestra los huecos libres del taller")
+
+        estado = panel(url, "estado")
+        verificar(bool(estado.get("version")),
+                  "el panel informa la version del backend desplegado")
+        verificar("anotar" in estado.get("capacidades", []),
+                  "el panel informa que puede listar, buscar y anotar turnos")
+        verificar("Turnos de Rosconi Garage" in estado.get("resumenHoy", ""),
+                  "el estado trae el resumen del dia listo para leer")
+
+        libres_tablero = [(dia["fecha"], turno["hora"])
+                          for dia in dias_tablero for turno in dia["libres"]]
+        verificar(len(libres_tablero) >= 2, "hay horarios libres para anotar a mano")
+        fecha_anotada, hora_anotada = libres_tablero[0]
+        anotado = panel(url, "anotar", {
+            "fecha": fecha_anotada, "hora": hora_anotada,
+            "servicio": "Mecánica general",
+            "nombre": "Cliente por teléfono", "telefono": "099123456",
+            "vehiculo": "Citroen C3 2017", "email": "",
+            "comentario": "Llamó por teléfono, no usa la web", "empresa": "",
+        })
+        verificar(anotado.get("ok") is True, "el taller puede anotar un turno a mano")
+        if not anotado.get("ok"):
+            print("   No se pudo anotar: " + str(anotado.get("mensaje")))
+        codigo_anotado = anotado.get("codigo", "")
+
+        segundo = panel(url, "anotar", {
+            "fecha": libres_tablero[1][0], "hora": libres_tablero[1][1],
+            "servicio": "Service completo y lubricentro",
+            "nombre": "Cliente por teléfono", "telefono": "099123456",
+            "vehiculo": "Citroen C3 2017", "empresa": "",
+        })
+        verificar(segundo.get("ok") is True,
+                  "el taller anota sin topar con el limite antiabuso de la web")
+
+        dia_del_anotado = panel(url, "panel", {"desde": fecha_anotada, "dias": 1})
+        turnos_dia = dia_del_anotado.get("agenda", [{}])[0].get("turnos", [])
+        nuestro = next((turno for turno in turnos_dia
+                        if turno.get("codigo") == codigo_anotado), None)
+        verificar(nuestro is not None, "el turno anotado aparece en el tablero de ese dia")
+        if nuestro:
+            verificar(nuestro.get("cliente") == "Cliente por teléfono",
+                      "el tablero muestra el cliente")
+            verificar(nuestro.get("telefono") == "099123456",
+                      "el tablero muestra el telefono para llamarlo")
+            verificar(nuestro.get("whatsapp") == "59899123456",
+                      "el tablero arma el link de WhatsApp del cliente")
+            verificar(nuestro.get("linea") in ("elevador", "piso"),
+                      "el tablero dice en que linea va el auto")
+            verificar(nuestro.get("origen") == "panel",
+                      "el tablero distingue los turnos anotados a mano")
+            verificar(nuestro.get("comentario") == "Llamó por teléfono, no usa la web",
+                      "el tablero muestra el comentario del cliente")
+
+        busqueda = panel(url, "buscar", {"texto": "citroen"})
+        verificar(busqueda.get("ok") is True, "el panel busca por texto")
+        verificar(any(turno.get("codigo") == codigo_anotado
+                      for turno in busqueda.get("encontrados", [])),
+                  "la busqueda encuentra al cliente por el vehiculo")
+        verificar(bool(panel(url, "buscar", {"texto": "099123456"}).get("encontrados")),
+                  "la busqueda encuentra por telefono")
+        verificar(bool(panel(url, "buscar", {"texto": codigo_anotado}).get("encontrados")),
+                  "la busqueda encuentra por codigo")
+        verificar(panel(url, "buscar", {"texto": "ab"}).get("encontrados") == [],
+                  "la busqueda pide al menos 3 letras")
+
+        marcado = panel(url, "listo", {"codigo": codigo_anotado})
+        verificar(marcado.get("ok") is True and marcado.get("listo") is True,
+                  "el taller marca un turno como listo")
+        tras_marcar = panel(url, "panel", {"desde": fecha_anotada, "dias": 1})
+        turno_marcado = next((turno for turno in
+                              tras_marcar.get("agenda", [{}])[0].get("turnos", [])
+                              if turno.get("codigo") == codigo_anotado), None)
+        verificar(turno_marcado is not None and turno_marcado.get("listo") is True,
+                  "el tablero muestra el turno marcado como listo")
+        desmarcado = panel(url, "listo", {"codigo": codigo_anotado, "listo": False})
+        verificar(desmarcado.get("ok") is True and desmarcado.get("listo") is False,
+                  "el taller puede volver el turno a pendiente")
+
+        limpieza_panel = [pedir(url, "/", {"accion": "cancelar", "clave": CLAVE,
+                                           "codigo": turno.get("codigo", "")}).get("ok")
+                          for turno in [anotado, segundo]]
+        verificar(all(limpieza_panel), "se cancelan los turnos anotados a mano")
 
     fallas = [descripcion for ok, descripcion in RESULTADOS if not ok]
     print(f"\nRESULTADO: {len(RESULTADOS) - len(fallas)}/{len(RESULTADOS)} pruebas OK")

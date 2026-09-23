@@ -83,6 +83,13 @@ var CONFIG = {
   MAX_RESERVAS_POR_TELEFONO: 2,
   LOCK_MS: 15000,
 
+  // Clave del panel del taller: DISTINTA de la clave publica del sitio.
+  // OJO: esta clave es solo un respaldo. Al ejecutar `instalar` se genera una
+  // clave aleatoria que se guarda en las PROPIEDADES DEL SCRIPT (no en este
+  // archivo), asi no queda publicada en el repositorio. Para verla, ejecutar
+  // `instalar` y leer el registro.
+  CLAVE_ADMIN: 'rg-panel-cambiar-con-instalar',
+
   // --- Avisos para el taller -------------------------------------------------
   // Recordatorio emergente en el calendario, minutos antes del turno (0 = no).
   AVISO_MINUTOS_ANTES: 60,
@@ -91,6 +98,14 @@ var CONFIG = {
   RESUMEN_MINUTO: 30,
   RESUMEN_EMAIL: ''       // vacio = la cuenta de Google que desplego el script
 };
+
+// ===========================================================================
+// Panel del taller
+// ===========================================================================
+// Acciones que solo funcionan con la clave de administracion.
+var ACCIONES_ADMIN = ['panel', 'buscar', 'anotar', 'listo', 'estado'];
+// Se muestra en el panel para saber que version del backend esta desplegada.
+var VERSION_BACKEND = '2026-09-23-panel-1';
 
 // ===========================================================================
 // Puntos de entrada HTTP
@@ -122,6 +137,13 @@ function doPost(e) {
     exigirClave_(cuerpo.clave);
 
     var accion = cuerpo.accion || '';
+
+    // Acciones del panel del taller: van con la clave de administracion.
+    if (ACCIONES_ADMIN.indexOf(accion) > -1) {
+      exigirClaveAdmin_(cuerpo.claveAdmin);
+      return respuesta_(accionAdmin_(cuerpo));
+    }
+
     if (accion === 'crear') {
       return respuesta_(crearReserva_(cuerpo));
     }
@@ -146,6 +168,30 @@ function exigirClave_(clave) {
   if (String(clave || '') !== CONFIG.CLAVE) {
     throw new Error('Clave de instalacion invalida.');
   }
+}
+
+function exigirClaveAdmin_(clave) {
+  if (String(clave || '') !== claveAdmin_()) {
+    throw new Error('Clave del panel invalida.');
+  }
+}
+
+/** Clave del panel: vive en las propiedades del script (no en el codigo).
+ *  La genera `instalar`; si todavia no se ejecuto, usa el respaldo de CONFIG. */
+function claveAdmin_() {
+  var guardada = PropertiesService.getScriptProperties().getProperty('claveAdmin');
+  return guardada || CONFIG.CLAVE_ADMIN;
+}
+
+/** Genera (o devuelve) la clave del panel y la deja en las propiedades. */
+function prepararClaveAdmin_() {
+  var propiedades = PropertiesService.getScriptProperties();
+  var clave = propiedades.getProperty('claveAdmin');
+  if (!clave) {
+    clave = 'rg-panel-' + Utilities.getUuid().replace(/-/g, '').slice(0, 12);
+    propiedades.setProperty('claveAdmin', clave);
+  }
+  return clave;
 }
 
 // ===========================================================================
@@ -413,7 +459,7 @@ function error_(codigo, mensaje) {
   return { ok: false, error: codigo, mensaje: mensaje };
 }
 
-function validarReserva_(datos) {
+function validarReserva_(datos, desdePanel) {
   var nombre = String(datos.nombre || '').trim();
   var telefono = String(datos.telefono || '').replace(/\D/g, '');
   var vehiculo = String(datos.vehiculo || '').trim();
@@ -452,8 +498,13 @@ function validarReserva_(datos) {
   }
 
   var ahora = new Date();
-  if (inicio.getTime() < sumarMinutos_(ahora, CONFIG.ANTICIPACION_MIN).getTime()) {
+  if (!desdePanel && inicio.getTime() < sumarMinutos_(ahora, CONFIG.ANTICIPACION_MIN).getTime()) {
     return error_('muy_pronto', 'Los turnos se piden con al menos 24 horas de anticipación.');
+  }
+  // Desde el panel se puede anotar para hoy (llaman por teléfono), pero nunca
+  // para un horario que ya pasó.
+  if (desdePanel && inicio.getTime() <= ahora.getTime()) {
+    return error_('muy_pronto', 'Ese horario ya pasó: elegí uno más tarde o de otro día.');
   }
   if (inicio.getTime() > sumarDias_(ahora, CONFIG.DIAS_VISTA).getTime()) {
     return error_('fuera_de_rango', 'Ese día está fuera de la agenda abierta (30 días).');
@@ -536,13 +587,13 @@ function restarReserva_(telefono) {
   }
 }
 
-function crearReserva_(datos) {
+function crearReserva_(datos, desdePanel) {
   // Campo trampa: si viene completo es un bot. Se ignora sin dar pistas.
-  if (String(datos.empresa || '').trim() !== '') {
+  if (!desdePanel && String(datos.empresa || '').trim() !== '') {
     return error_('no_procesado', 'No pudimos procesar la solicitud. Escribinos por WhatsApp.');
   }
 
-  var validacion = validarReserva_(datos);
+  var validacion = validarReserva_(datos, desdePanel);
   if (!validacion.ok) {
     return validacion;
   }
@@ -584,12 +635,13 @@ function crearReserva_(datos) {
       return error_('sin_cupo', 'Ese horario se acaba de ocupar. Elegí otro, por favor.');
     }
 
-    // Limites antiabuso (por dia y por telefono). Van despues de reconocer un
-    // reintento: si el cliente repite un turno que ya existe, tiene que recibir
-    // su codigo aunque haya alcanzado el limite.
-    var aviso = avisoLimite_(validacion.telefono);
-    if (aviso) {
-      return error_('limite_alcanzado', aviso);
+    // Limites antiabuso (por dia y por telefono). No se aplican a los turnos que
+    // el taller anota a mano desde el panel.
+    if (!desdePanel) {
+      var aviso = avisoLimite_(validacion.telefono);
+      if (aviso) {
+        return error_('limite_alcanzado', aviso);
+      }
     }
 
     // Linea interna del taller: el cliente nunca la ve.
@@ -610,7 +662,8 @@ function crearReserva_(datos) {
       validacion.email ? 'Email: ' + validacion.email : '',
       validacion.comentario ? 'Comentario: ' + validacion.comentario : '',
       '',
-      'Reservado desde la web de Rosconi Garage.'
+      desdePanel ? 'Anotado desde el panel del taller.'
+        : 'Reservado desde la web de Rosconi Garage.'
     ].join('\n');
 
     var opciones = {
@@ -635,7 +688,9 @@ function crearReserva_(datos) {
       evento.addPopupReminder(CONFIG.AVISO_MINUTOS_ANTES);
     }
 
-    contarReserva_(validacion.telefono);
+    if (!desdePanel) {
+      contarReserva_(validacion.telefono);
+    }
     invalidarAgenda_();
 
     return {
@@ -783,6 +838,211 @@ function cancelarReserva_(cuerpo) {
 }
 
 // ===========================================================================
+// Panel del taller
+// ===========================================================================
+/** Un turno del calendario con los datos que necesita el taller. */
+function turnoParaPanel_(evento) {
+  var detalle = String(evento.getDescription() || '');
+  var titulo = String(evento.getTitle() || '');
+  var telefono = valorDe_(detalle, 'Teléfono');
+  var codigo = detalle.match(/Código: (RG-[A-Z0-9]{8})/);
+  return {
+    codigo: codigo ? codigo[1] : '',
+    fecha: claveFecha_(evento.getStartTime()),
+    hora: Utilities.formatDate(evento.getStartTime(), CONFIG.ZONA, 'HH:mm'),
+    horaFin: Utilities.formatDate(evento.getEndTime(), CONFIG.ZONA, 'HH:mm'),
+    minutos: duracionEnMinutos_(evento.getStartTime(), evento.getEndTime()),
+    linea: titulo.indexOf('ELEVADOR') > -1 ? 'elevador'
+      : (titulo.indexOf('PISO') > -1 ? 'piso' : ''),
+    deja: titulo.indexOf('(deja el auto)') > -1,
+    listo: titulo.indexOf('✅') > -1,
+    servicio: valorDe_(detalle, 'Servicio'),
+    vehiculo: valorDe_(detalle, 'Vehículo'),
+    cliente: valorDe_(detalle, 'Cliente'),
+    telefono: telefono,
+    whatsapp: telefono ? telefonoInternacional_(telefono) : '',
+    email: valorDe_(detalle, 'Email'),
+    comentario: valorDe_(detalle, 'Comentario'),
+    origen: detalle.indexOf('Anotado desde el panel') > -1 ? 'panel' : 'web'
+  };
+}
+
+/** Turnos de un rango de dias, con los huecos libres de cada dia. */
+function turnosDelRango_(desdeTexto, dias) {
+  var desde = momento_(desdeTexto || claveFecha_(new Date()), '00:00');
+  var eventos = calendario_().getEvents(desde, sumarDias_(desde, dias));
+  var ahora = new Date();
+  var porFecha = {};
+  var i;
+
+  for (i = 0; i < eventos.length; i++) {
+    var evento = eventos[i];
+    if (evento.isAllDayEvent()) {
+      continue;
+    }
+    if (String(evento.getDescription() || '').indexOf('Código: RG-') === -1) {
+      continue;
+    }
+    var turno = turnoParaPanel_(evento);
+    if (!porFecha[turno.fecha]) {
+      porFecha[turno.fecha] = [];
+    }
+    porFecha[turno.fecha].push(turno);
+  }
+
+  var referencia = servicio_(CONFIG.SERVICIO_PREDETERMINADO);
+  var salida = [];
+  for (i = 0; i < dias; i++) {
+    var dia = sumarDias_(desde, i);
+    var clave = claveFecha_(dia);
+    var lista = porFecha[clave] || [];
+    lista.sort(function (a, b) {
+      return a.hora === b.hora ? 0 : (a.hora < b.hora ? -1 : 1);
+    });
+
+    var franjas = CONFIG.ATENCION[dia.getDay()] || [];
+    var cerrado = franjas.length === 0 || esDiaCerrado_(eventos, dia);
+    var libres = [];
+    if (!cerrado) {
+      for (var f = 0; f < franjas.length; f++) {
+        var inicios = iniciosDeFranja_(
+          minutosDelDia_(franjas[f][0]), minutosDelDia_(franjas[f][1]), referencia
+        );
+        for (var j = 0; j < inicios.length; j++) {
+          var inicio = new Date(
+            dia.getFullYear(), dia.getMonth(), dia.getDate(),
+            Math.floor(inicios[j] / 60), inicios[j] % 60, 0, 0
+          );
+          if (inicio.getTime() <= ahora.getTime()) {
+            continue;
+          }
+          var ocupados = ocupacion_(
+            eventos, inicio, sumarMinutos_(inicio, referencia.minutos)
+          );
+          if (ocupados < CONFIG.CUPOS) {
+            libres.push({
+              hora: rellenar_(Math.floor(inicios[j] / 60)) + ':' + rellenar_(inicios[j] % 60),
+              lugares: CONFIG.CUPOS - ocupados
+            });
+          }
+        }
+      }
+    }
+
+    salida.push({
+      fecha: clave,
+      etiqueta: etiquetaDia_(dia),
+      etiquetaCorta: etiquetaCorta_(dia),
+      cerrado: cerrado,
+      turnos: lista,
+      libres: libres
+    });
+  }
+  return salida;
+}
+
+/** Busca turnos por cliente, telefono, vehiculo, codigo o trabajo. */
+function buscarTurnos_(texto) {
+  var buscado = String(texto || '').trim().toLowerCase();
+  if (buscado.length < 3) {
+    return [];
+  }
+  var acentos = { 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n' };
+  function simple(valor) {
+    return String(valor).toLowerCase().replace(/[áéíóúüñ]/g, function (letra) {
+      return acentos[letra];
+    });
+  }
+
+  var ahora = new Date();
+  var eventos = calendario_().getEvents(
+    sumarDias_(ahora, -30), sumarDias_(ahora, CONFIG.DIAS_VISTA + 60)
+  );
+  var patron = simple(buscado);
+  var encontrados = [];
+
+  for (var i = 0; i < eventos.length; i++) {
+    var evento = eventos[i];
+    if (evento.isAllDayEvent()) {
+      continue;
+    }
+    if (String(evento.getDescription() || '').indexOf('Código: RG-') === -1) {
+      continue;
+    }
+    var turno = turnoParaPanel_(evento);
+    var campos = simple([turno.codigo, turno.cliente, turno.telefono, turno.vehiculo,
+      turno.servicio, turno.comentario].join(' | '));
+    if (campos.indexOf(patron) > -1) {
+      encontrados.push(turno);
+    }
+  }
+
+  encontrados.sort(function (a, b) {
+    return (a.fecha + a.hora) < (b.fecha + b.hora) ? -1 : 1;
+  });
+  return encontrados.slice(0, 40);
+}
+
+/** Marca (o desmarca) un turno como listo: se ve en el panel y en el calendario. */
+function marcarListo_(codigo, listo) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(CONFIG.LOCK_MS)) {
+    return error_('sistema_ocupado', 'Probá de nuevo en unos segundos.');
+  }
+  try {
+    var evento = buscarPorCodigo_(codigo);
+    if (!evento) {
+      return error_('no_encontrado', 'No encontramos un turno con ese código.');
+    }
+    var titulo = String(evento.getTitle() || '').replace(/^✅\s*/, '');
+    evento.setTitle(listo ? '✅ ' + titulo : titulo);
+    var turno = turnoParaPanel_(evento);
+    turno.ok = true;
+    turno.mensaje = listo ? 'Quedó marcado como listo.' : 'Volvió a la lista de pendientes.';
+    return turno;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Acciones del panel del taller (la clave de administracion ya fue validada). */
+function accionAdmin_(cuerpo) {
+  var accion = cuerpo.accion;
+  var ahora = Utilities.formatDate(new Date(), CONFIG.ZONA, 'yyyy-MM-dd HH:mm');
+
+  if (accion === 'estado') {
+    return {
+      ok: true, version: VERSION_BACKEND, zona: CONFIG.ZONA, actualizado: ahora,
+      capacidades: ACCIONES_ADMIN, resumenHoy: resumenDelDia_(new Date())
+    };
+  }
+  if (accion === 'panel') {
+    var dias = Math.min(Math.max(Number(cuerpo.dias) || 14, 1), 31);
+    return {
+      ok: true, version: VERSION_BACKEND, zona: CONFIG.ZONA, actualizado: ahora,
+      desde: cuerpo.desde || claveFecha_(new Date()), dias: dias,
+      cupos: CONFIG.CUPOS, anticipacionMinutos: CONFIG.ANTICIPACION_MIN,
+      servicios: CONFIG.SERVICIOS,
+      servicioReferencia: CONFIG.SERVICIO_PREDETERMINADO,
+      agenda: turnosDelRango_(cuerpo.desde, dias)
+    };
+  }
+  if (accion === 'buscar') {
+    return {
+      ok: true, actualizado: ahora, texto: cuerpo.texto || '',
+      encontrados: buscarTurnos_(cuerpo.texto)
+    };
+  }
+  if (accion === 'anotar') {
+    return crearReserva_(cuerpo, true);
+  }
+  if (accion === 'listo') {
+    return marcarListo_(cuerpo.codigo, cuerpo.listo !== false);
+  }
+  return error_('accion_desconocida', 'Accion de panel no valida.');
+}
+
+// ===========================================================================
 // Resumen para el taller
 // ===========================================================================
 /** Valor de una linea "Etiqueta: valor" de la ficha del turno. */
@@ -899,6 +1159,10 @@ function instalar() {
   programarResumen_();
   Logger.log('Resumen de hoy (asi lo recibe el taller por mail):\n' +
     resumenDelDia_(new Date()));
+  Logger.log('CLAVE DEL PANEL DEL TALLER: ' + prepararClaveAdmin_());
+  Logger.log('Guardala: es la que se escribe una sola vez en la pagina panel.html ' +
+    'del sitio. Queda en las propiedades del script, no en el codigo. ' +
+    'Si la queres cambiar, borra la propiedad claveAdmin y volve a ejecutar instalar.');
   Logger.log('Listo. Desplega como aplicacion web (acceso: cualquier usuario) y copia la URL /exec.');
 }
 

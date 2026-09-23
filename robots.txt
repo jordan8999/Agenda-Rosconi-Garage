@@ -1,7 +1,11 @@
 User-agent: *
 Allow: /
 
-# Agendas externas que no deben indexarse desde aca
+# El panel del taller es privado: no se indexa
+Disallow: /panel.html
+Disallow: /assets/css/panel.css
+Disallow: /assets/js/panel.js
+Disallow: /tools/
 Disallow: /assets/img/
 
 Sitemap: https://jordan8999.github.io/Agenda-Rosconi-Garage/sitemap.xml

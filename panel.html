@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es-UY">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Panel del taller | Rosconi Garage</title>
+  <meta name="description" content="Panel privado del taller: agenda del día, datos de cada auto y contacto directo con el cliente.">
+  <meta name="theme-color" content="#12100f">
+  <link rel="icon" href="assets/icons/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="assets/css/panel.css">
+</head>
+<body>
+  <header class="barra">
+    <p class="barra__marca"><span class="barra__punto" aria-hidden="true"></span> Rosconi Garage <span class="barra__sep">·</span> Panel del taller</p>
+    <div class="barra__acciones" data-panel-acciones hidden>
+      <button type="button" class="btn" data-panel-refrescar>Actualizar</button>
+      <button type="button" class="btn" data-panel-imprimir>Imprimir</button>
+      <button type="button" class="btn btn--tenue" data-panel-salir>Salir</button>
+    </div>
+  </header>
+
+  <p class="aviso" data-panel-aviso role="status" aria-live="polite"></p>
+
+  <section class="ingreso" data-panel-ingreso hidden>
+    <h1>Panel del taller</h1>
+    <p>
+      Acá ves la agenda real del taller: qué auto llega, a qué hora, qué hay que hacerle
+      y cómo contactar al cliente. También podés anotar los turnos que llegan por teléfono.
+    </p>
+    <form data-panel-form-clave novalidate>
+      <label for="panel-clave">Clave de administración</label>
+      <input id="panel-clave" type="password" autocomplete="current-password"
+             placeholder="Clave del panel" required>
+      <button class="btn btn--principal" type="submit">Entrar</button>
+    </form>
+    <p class="nota">
+      Es distinta de la clave del sitio. Está en <code>CONFIG.CLAVE_ADMIN</code> del script de
+      Apps Script y queda guardada solo en este dispositivo.
+    </p>
+  </section>
+
+  <main data-panel-contenido hidden>
+    <nav class="pestanas" aria-label="Vistas del panel">
+      <button type="button" class="pestana" data-panel-vista="dia" aria-pressed="true">Día</button>
+      <button type="button" class="pestana" data-panel-vista="proximos" aria-pressed="false">Próximos 14 días</button>
+      <button type="button" class="pestana" data-panel-vista="buscar" aria-pressed="false">Buscar</button>
+    </nav>
+
+    <section data-panel-seccion="dia">
+      <div class="tira" data-panel-tira role="group" aria-label="Elegir el día"></div>
+
+      <div class="dia__cabecera">
+        <div>
+          <h1 data-panel-titulo-dia>Cargando…</h1>
+          <p class="dia__resumen" data-panel-resumen-dia></p>
+        </div>
+        <label class="salto">
+          Ir a otro día
+          <input type="date" data-panel-fecha>
+        </label>
+      </div>
+
+      <div class="turnos" data-panel-turnos></div>
+
+      <div class="libres" data-panel-libres></div>
+
+      <details class="anotar">
+        <summary>Anotar un turno que llegó por teléfono</summary>
+        <form data-panel-form-anotar novalidate>
+          <div class="campos">
+            <div class="campo">
+              <label for="anotar-servicio">Trabajo</label>
+              <select id="anotar-servicio" data-anotar-servicio></select>
+            </div>
+            <div class="campo">
+              <label for="anotar-fecha">Día</label>
+              <input id="anotar-fecha" type="date" data-anotar-fecha required>
+            </div>
+            <div class="campo">
+              <label for="anotar-hora">Hora</label>
+              <input id="anotar-hora" type="time" step="900" data-anotar-hora required>
+            </div>
+            <div class="campo">
+              <label for="anotar-nombre">Cliente</label>
+              <input id="anotar-nombre" type="text" maxlength="80" data-anotar-nombre required>
+            </div>
+            <div class="campo">
+              <label for="anotar-telefono">Teléfono</label>
+              <input id="anotar-telefono" type="tel" maxlength="20" data-anotar-telefono required>
+            </div>
+            <div class="campo">
+              <label for="anotar-vehiculo">Vehículo</label>
+              <input id="anotar-vehiculo" type="text" maxlength="80" data-anotar-vehiculo placeholder="Marca, modelo y año" required>
+            </div>
+            <div class="campo campo--ancho">
+              <label for="anotar-comentario">Qué hay que hacer</label>
+              <textarea id="anotar-comentario" rows="2" maxlength="500" data-anotar-comentario></textarea>
+            </div>
+          </div>
+          <button class="btn btn--principal" type="submit" data-anotar-enviar>Guardar turno</button>
+        </form>
+      </details>
+    </section>
+
+    <section data-panel-seccion="proximos" hidden>
+      <h1>Próximos 14 días</h1>
+      <div class="proximos" data-panel-proximos></div>
+    </section>
+
+    <section data-panel-seccion="buscar" hidden>
+      <h1>Buscar un turno</h1>
+      <form class="buscar" data-panel-form-buscar novalidate>
+        <label class="oculto" for="panel-buscar">Buscar</label>
+        <input id="panel-buscar" type="search" placeholder="Cliente, teléfono, auto o código" data-panel-texto-buscar>
+        <button class="btn btn--principal" type="submit">Buscar</button>
+      </form>
+      <div class="turnos" data-panel-resultados></div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    Rosconi Garage · Lavalleja 730, Artigas · <span data-panel-version>panel</span>
+  </footer>
+
+  <script src="assets/js/panel.js" defer></script>
+</body>
+</html>

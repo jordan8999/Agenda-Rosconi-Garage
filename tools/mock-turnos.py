@@ -21,6 +21,8 @@ from urllib.parse import parse_qs, urlparse
 
 CONFIG = {
     "clave": "rosconi-artigas-turnos-2026-k72b",
+    "clave_admin": "rg-panel-j72k9x4m-d7qm",
+    "zona": "America/Montevideo",
     "paso_min": 30,
     "anticipacion_min": 1440,
     "dias_vista": 30,
@@ -168,7 +170,10 @@ def descripcion_de_reserva(codigo_reserva: str, elegido: dict, reserva: dict) ->
     if reserva.get("comentario"):
         lineas.append("Comentario: " + reserva["comentario"])
     lineas.append("")
-    lineas.append("Reservado desde la web de Rosconi Garage.")
+    lineas.append(
+        "Anotado desde el panel del taller." if reserva.get("origen") == "panel"
+        else "Reservado desde la web de Rosconi Garage."
+    )
     return "\n".join(lineas)
 
 
@@ -269,8 +274,8 @@ def agenda(nombre_servicio, dias: int) -> dict:
     }
 
 
-def crear(cuerpo: dict) -> dict:
-    if str(cuerpo.get("empresa", "")).strip():
+def crear(cuerpo: dict, desde_panel: bool = False) -> dict:
+    if not desde_panel and str(cuerpo.get("empresa", "")).strip():
         return {"ok": False, "error": "no_procesado", "mensaje": "No pudimos procesar la solicitud."}
     elegido = next(
         (s for s in CONFIG["servicios"] if s["nombre"] == str(cuerpo.get("servicio") or "").strip()),
@@ -291,8 +296,14 @@ def crear(cuerpo: dict) -> dict:
         return {"ok": False, "error": "fecha_invalida", "mensaje": "Elegí otra vez el día y el horario."}
     if inicio.date() > (datetime.now() + timedelta(days=CONFIG["dias_vista"])).date():
         return {"ok": False, "error": "fuera_de_rango", "mensaje": "Ese día está fuera de la agenda abierta."}
-    if inicio < datetime.now() + timedelta(minutes=CONFIG["anticipacion_min"]):
-        return {"ok": False, "error": "muy_pronto", "mensaje": "Los turnos se piden con 24 h de anticipación."}
+    if not desde_panel and inicio < datetime.now() + timedelta(minutes=CONFIG["anticipacion_min"]):
+        return {"ok": False, "error": "muy_pronto",
+                "mensaje": "Los turnos se piden con 24 h de anticipación."}
+    # Desde el panel se puede anotar para hoy (llaman por teléfono), nunca para
+    # un horario que ya pasó.
+    if desde_panel and inicio <= datetime.now():
+        return {"ok": False, "error": "muy_pronto",
+                "mensaje": "Ese horario ya pasó: elegí uno más tarde o de otro día."}
     inicio_min = inicio.hour * 60 + inicio.minute
     franjas = CONFIG["atencion"].get(inicio.weekday(), [])
     if elegido.get("deja"):
@@ -324,9 +335,10 @@ def crear(cuerpo: dict) -> dict:
         }
     if usados >= CONFIG["cupos"]:
         return {"ok": False, "error": "sin_cupo", "mensaje": "Ese horario se acaba de ocupar."}
-    aviso = aviso_limite(telefono)
-    if aviso:
-        return {"ok": False, "error": "limite_alcanzado", "mensaje": aviso}
+    if not desde_panel:
+        aviso = aviso_limite(telefono)
+        if aviso:
+            return {"ok": False, "error": "limite_alcanzado", "mensaje": aviso}
     nuevo = codigo()
     reserva = {
         "codigo": nuevo, "inicio": inicio, "fin": fin,
@@ -336,10 +348,13 @@ def crear(cuerpo: dict) -> dict:
         "comentario": str(cuerpo.get("comentario", "")),
         "linea": "ELEVADOR" if usados == 0 else "PISO",
         "deja": bool(elegido.get("deja")),
+        "listo": False,
+        "origen": "panel" if desde_panel else "web",
     }
     reserva["descripcion"] = descripcion_de_reserva(nuevo, elegido, reserva)
     RESERVAS.append(reserva)
-    contar_reserva(telefono)
+    if not desde_panel:
+        contar_reserva(telefono)
     return {
         "ok": True, "codigo": nuevo,
         "estado": "libre" if usados == 0 else "ultimo",
@@ -383,6 +398,134 @@ def cancelar(cuerpo: dict) -> dict:
     restar_reserva(reserva.get("telefono", ""))
     datos["mensaje"] = f"El turno del {datos['etiqueta']} a las {datos['hora']} quedó cancelado."
     return datos
+
+
+ACCIONES_ADMIN = ["panel", "buscar", "anotar", "listo", "estado"]
+VERSION_BACKEND = "2026-09-23-panel-1"
+
+
+def turno_de_panel(reserva: dict) -> dict:
+    """Un turno con los datos que necesita el taller (igual que el backend real)."""
+    return {
+        "codigo": reserva["codigo"],
+        "fecha": reserva["inicio"].date().isoformat(),
+        "hora": reserva["inicio"].strftime("%H:%M"),
+        "horaFin": reserva["fin"].strftime("%H:%M"),
+        "minutos": duracion_en_minutos(reserva["inicio"], reserva["fin"]),
+        "linea": reserva["linea"].lower(),
+        "deja": bool(reserva.get("deja")),
+        "listo": bool(reserva.get("listo")),
+        "servicio": reserva["servicio"],
+        "vehiculo": reserva["vehiculo"],
+        "cliente": reserva["nombre"],
+        "telefono": reserva["telefono"],
+        "whatsapp": telefono_internacional(reserva["telefono"]),
+        "email": reserva.get("email", ""),
+        "comentario": reserva.get("comentario", ""),
+        "origen": reserva.get("origen", "web"),
+    }
+
+
+def turnos_del_rango(desde, dias: int) -> list[dict]:
+    """Agenda del taller: los turnos y los huecos libres de cada dia."""
+    primer_dia = datetime.fromisoformat(desde).date() if desde else datetime.now().date()
+    referencia = servicio(CONFIG["servicio_predeterminado"])
+    salida = []
+    for indice in range(dias):
+        fecha = primer_dia + timedelta(days=indice)
+        del_dia = sorted((r for r in RESERVAS if r["inicio"].date() == fecha),
+                         key=lambda r: r["inicio"])
+        franjas = CONFIG["atencion"].get(fecha.weekday(), [])
+        cerrado = (not franjas) or fecha.isoformat() in CERRADOS
+        libres = []
+        if not cerrado:
+            for abre, cierra in franjas:
+                for minuto in inicios_de_franja(abre, cierra, referencia):
+                    inicio = datetime.combine(fecha, time(minuto // 60, minuto % 60))
+                    if inicio <= datetime.now():
+                        continue
+                    usados = ocupados(inicio,
+                                      inicio + timedelta(minutes=referencia["minutos"]))
+                    if usados < CONFIG["cupos"]:
+                        libres.append({"hora": hora(minuto),
+                                       "lugares": CONFIG["cupos"] - usados})
+        mediodia = datetime.combine(fecha, time(12, 0))
+        salida.append({
+            "fecha": fecha.isoformat(),
+            "etiqueta": etiqueta(mediodia),
+            "etiquetaCorta": etiqueta_corta(mediodia),
+            "cerrado": cerrado,
+            "turnos": [turno_de_panel(r) for r in del_dia],
+            "libres": libres,
+        })
+    return salida
+
+
+def buscar_turnos(texto: str) -> list[dict]:
+    """Busca por cliente, telefono, vehiculo, codigo o trabajo (sin acentos)."""
+    buscado = str(texto or "").strip().lower()
+    if len(buscado) < 3:
+        return []
+
+    def simple(valor: str) -> str:
+        for acentuada, llana in zip("áéíóúüñ", "aeiouun"):
+            valor = valor.replace(acentuada, llana)
+        return valor.lower()
+
+    patron = simple(buscado)
+    encontrados = []
+    for reserva in RESERVAS:
+        campos = simple(" | ".join([
+            reserva["codigo"], reserva["nombre"], reserva["telefono"],
+            reserva["vehiculo"], reserva["servicio"], reserva.get("comentario", ""),
+        ]))
+        if patron in campos:
+            encontrados.append(turno_de_panel(reserva))
+    encontrados.sort(key=lambda turno: (turno["fecha"], turno["hora"]))
+    return encontrados[:40]
+
+
+def marcar_listo(codigo: str, listo: bool = True) -> dict:
+    reserva = buscar(codigo)
+    if not reserva:
+        return {"ok": False, "error": "no_encontrado",
+                "mensaje": "No encontramos un turno con ese código."}
+    reserva["listo"] = bool(listo)
+    datos = turno_de_panel(reserva)
+    datos["ok"] = True
+    datos["mensaje"] = ("Quedó marcado como listo." if listo
+                        else "Volvió a la lista de pendientes.")
+    return datos
+
+
+def accion_admin(cuerpo: dict) -> dict:
+    """Acciones del panel (la clave de administracion ya fue validada)."""
+    accion = str(cuerpo.get("accion", ""))
+    ahora = datetime.now().strftime("%Y-%m-%d %H:%M")
+    if accion == "estado":
+        return {"ok": True, "version": VERSION_BACKEND, "zona": CONFIG["zona"],
+                "actualizado": ahora, "capacidades": ACCIONES_ADMIN,
+                "resumenHoy": resumen_del_dia("")}
+    if accion == "panel":
+        dias = max(min(int(cuerpo.get("dias") or 14), 31), 1)
+        return {"ok": True, "version": VERSION_BACKEND, "zona": CONFIG["zona"],
+                "actualizado": ahora, "dias": dias, "cupos": CONFIG["cupos"],
+                "anticipacionMinutos": CONFIG["anticipacion_min"],
+                "desde": str(cuerpo.get("desde") or datetime.now().date().isoformat()),
+                "servicios": CONFIG["servicios"],
+                "servicioReferencia": CONFIG["servicio_predeterminado"],
+                "agenda": turnos_del_rango(cuerpo.get("desde"), dias)}
+    if accion == "buscar":
+        return {"ok": True, "actualizado": ahora,
+                "texto": str(cuerpo.get("texto") or ""),
+                "encontrados": buscar_turnos(str(cuerpo.get("texto") or ""))}
+    if accion == "anotar":
+        return crear(cuerpo, desde_panel=True)
+    if accion == "listo":
+        return marcar_listo(str(cuerpo.get("codigo") or ""),
+                            cuerpo.get("listo", True) is not False)
+    return {"ok": False, "error": "accion_desconocida",
+            "mensaje": "Accion de panel no valida."}
 
 
 def control(accion: str, valor: str) -> dict:
@@ -444,12 +587,22 @@ class Manejador(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             self.responder({"ok": False, "error": "json_invalido", "mensaje": "Cuerpo invalido."})
             return
+        accion = str(cuerpo.get("accion", ""))
+
+        # El panel del taller usa su propia clave: la publica no sirve.
+        if accion in ACCIONES_ADMIN:
+            if str(cuerpo.get("claveAdmin", "")) != CONFIG["clave_admin"]:
+                self.responder({"ok": False, "error": "clave_admin_invalida",
+                                "mensaje": "Clave del panel invalida."})
+                return
+            self.responder(accion_admin(cuerpo))
+            return
+
         if str(cuerpo.get("clave", "")) != CONFIG["clave"]:
             self.responder({"ok": False, "error": "clave_invalida", "mensaje": "Clave invalida."})
             return
-        manejador = {"crear": crear, "consultar": consultar, "cancelar": cancelar}.get(
-            str(cuerpo.get("accion", ""))
-        )
+
+        manejador = {"crear": crear, "consultar": consultar, "cancelar": cancelar}.get(accion)
         if not manejador:
             self.responder({"ok": False, "error": "accion_desconocida", "mensaje": "Accion no valida."})
             return

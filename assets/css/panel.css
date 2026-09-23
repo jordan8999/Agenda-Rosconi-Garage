@@ -1,0 +1,308 @@
+/* ==========================================================================
+   Rosconi Garage — panel del taller
+   Pensado para el celular dentro del taller y para imprimir la hoja del día.
+   ========================================================================== */
+:root {
+  --fondo: #12100f;
+  --capa: #1b1817;
+  --capa2: #232020;
+  --borde: #35302e;
+  --texto: #f6f3f1;
+  --tenue: #b3a9a4;
+  --principal: #ff6a13;
+  --principal-texto: #1a1208;
+  --exito: #25d366;
+  --alerta: #ffb020;
+  --radio: 14px;
+  --sombra: 0 6px 20px rgba(0, 0, 0, .35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+h1 { font-size: 1.25rem; margin: 0 0 4px; }
+code { background: var(--capa2); padding: 2px 5px; border-radius: 6px; font-size: .85em; }
+.oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+.barra {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(18, 16, 15, .96);
+  border-bottom: 1px solid var(--borde);
+  backdrop-filter: blur(6px);
+}
+
+.barra__marca { margin: 0; font-weight: 700; letter-spacing: .2px; }
+.barra__sep { color: var(--tenue); font-weight: 400; }
+.barra__punto {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--principal);
+}
+.barra__acciones { display: flex; gap: 6px; }
+
+.btn {
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 14px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: var(--capa2);
+  color: var(--texto);
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--principal); }
+.btn:focus-visible { outline: 3px solid var(--principal); outline-offset: 2px; }
+.btn--principal { background: var(--principal); border-color: var(--principal); color: var(--principal-texto); }
+.btn--tenue { background: transparent; color: var(--tenue); }
+.btn--whatsapp { background: var(--exito); border-color: var(--exito); color: #06240f; }
+.btn--llamar { background: var(--capa2); }
+
+.aviso { margin: 10px 14px 0; font-size: .92rem; color: var(--tenue); min-height: 1.2em; }
+.aviso[data-tipo="error"] { color: #ff9c9c; }
+.aviso[data-tipo="ok"] { color: #8be2a5; }
+
+.ingreso {
+  max-width: 520px;
+  margin: 6vh auto;
+  padding: 22px;
+  background: var(--capa);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+.ingreso p { color: var(--tenue); font-size: .95rem; }
+.ingreso form { display: grid; gap: 10px; margin: 18px 0 12px; }
+.ingreso input {
+  font: inherit;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--borde);
+  background: var(--capa2);
+  color: var(--texto);
+}
+.ingreso label { font-weight: 600; font-size: .9rem; }
+.nota { font-size: .85rem !important; }
+
+.pestanas { display: flex; gap: 6px; padding: 12px 14px 0; }
+.pestana {
+  font: inherit;
+  font-weight: 600;
+  padding: 9px 14px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tenue);
+  cursor: pointer;
+}
+.pestana[aria-pressed="true"] { background: var(--capa2); color: var(--texto); border-color: var(--principal); }
+
+/* ------------------------------------------------------------------- tira - */
+.tira { display: flex; gap: 8px; overflow-x: auto; padding: 14px; scrollbar-width: thin; }
+.tira__dia {
+  flex: 0 0 auto;
+  min-width: 76px;
+  padding: 10px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: var(--capa);
+  color: var(--texto);
+  cursor: pointer;
+  text-align: center;
+}
+.tira__dia[aria-current="true"] { border-color: var(--principal); background: #2a1c12; }
+.tira__dia strong { display: block; font-size: 1rem; }
+.tira__dia span { color: var(--tenue); font-size: .8rem; }
+.tira__dia b { display: inline-block; margin-top: 4px; font-size: .8rem; color: var(--principal); }
+
+/* -------------------------------------------------------------------- día - */
+.dia__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 14px 8px;
+}
+.dia__resumen { margin: 0; color: var(--tenue); font-size: .92rem; }
+.salto { display: grid; gap: 4px; font-size: .8rem; color: var(--tenue); }
+.salto input {
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--borde);
+  background: var(--capa2);
+  color: var(--texto);
+}
+
+/* ----------------------------------------------------------------- turnos - */
+.turnos { display: grid; gap: 12px; padding: 6px 14px 14px; }
+
+.turno {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 12px;
+  padding: 14px;
+  background: var(--capa);
+  border: 1px solid var(--borde);
+  border-left: 5px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+.turno[data-linea="elevador"] { border-left-color: var(--principal); }
+.turno[data-linea="piso"] { border-left-color: #4aa8ff; }
+.turno[data-listo="true"] { opacity: .62; }
+.turno__hora { text-align: center; }
+.turno__hora strong { display: block; font-size: 1.5rem; line-height: 1.1; }
+.turno__hora span { color: var(--tenue); font-size: .82rem; }
+.turno__linea {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  background: var(--capa2);
+  color: var(--tenue);
+}
+.turno__auto { margin: 0; font-size: 1.15rem; font-weight: 700; }
+.turno__servicio { margin: 2px 0 8px; color: var(--tenue); font-size: .92rem; }
+.turno__etiquetas { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.etiq {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: .74rem;
+  font-weight: 700;
+  background: #2f2a27;
+  color: var(--texto);
+}
+.etiq--deja { background: #46301a; color: #ffcf9a; }
+.etiq--listo { background: #1d3d28; color: #a6f0bd; }
+.etiq--panel { background: #2a2a45; color: #c5c8ff; }
+.etiq--largo { background: #3d2a12; color: var(--alerta); }
+.turno__cliente { margin: 0 0 10px; font-size: .95rem; }
+.turno__acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.turno__acciones .btn { flex: 1 1 140px; text-align: center; text-decoration: none; }
+.turno__pie { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; font-size: .8rem; color: var(--tenue); }
+.turno__codigo { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .5px; }
+.turno__vacio { padding: 18px 14px; color: var(--tenue); }
+
+.tarea {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #191614;
+  border: 1px dashed var(--borde);
+  border-radius: 10px;
+  font-size: .92rem;
+}
+.tarea b { display: block; font-size: .74rem; text-transform: uppercase; letter-spacing: .5px; color: var(--principal); }
+
+/* ----------------------------------------------------------------- libres - */
+.libres { padding: 0 14px 16px; }
+.libres h2 { font-size: .95rem; color: var(--tenue); font-weight: 600; margin: 0 0 8px; }
+.libres__lista { display: flex; flex-wrap: wrap; gap: 6px; }
+.libres__hora {
+  padding: 6px 10px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  font-size: .85rem;
+  color: var(--tenue);
+}
+.libres__hora b { color: var(--texto); }
+
+/* ---------------------------------------------------------------- anotar -- */
+.anotar { margin: 0 14px 20px; background: var(--capa); border: 1px solid var(--borde); border-radius: var(--radio); }
+.anotar summary { padding: 14px; font-weight: 700; cursor: pointer; }
+.anotar form { padding: 0 14px 16px; }
+.campos { display: grid; gap: 10px; grid-template-columns: 1fr; }
+.campo { display: grid; gap: 4px; }
+.campo label { font-size: .82rem; color: var(--tenue); font-weight: 600; }
+.campo input, .campo select, .campo textarea {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--borde);
+  background: var(--capa2);
+  color: var(--texto);
+}
+.anotar .btn { margin-top: 12px; width: 100%; }
+
+/* -------------------------------------------------------------- próximos -- */
+.proximos { display: grid; gap: 10px; padding: 8px 14px 20px; }
+.proximo { background: var(--capa); border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden; }
+.proximo__cabecera {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 14px;
+  background: transparent;
+  border: 0;
+  color: var(--texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.proximo__cabecera strong { font-size: 1rem; }
+.proximo__cuenta { color: var(--principal); font-weight: 700; }
+.proximo__lista { margin: 0; padding: 0 14px 12px; list-style: none; }
+.proximo__lista li { padding: 6px 0; border-top: 1px solid var(--borde); font-size: .92rem; color: var(--tenue); }
+.proximo__lista b { color: var(--texto); }
+.proximo[data-cerrado="true"] .proximo__cuenta { color: var(--tenue); }
+
+/* ---------------------------------------------------------------- buscar -- */
+.buscar { display: flex; gap: 8px; padding: 8px 14px 12px; }
+.buscar input {
+  flex: 1;
+  font: inherit;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--borde);
+  background: var(--capa2);
+  color: var(--texto);
+}
+.pie { padding: 18px 14px 30px; color: var(--tenue); font-size: .8rem; text-align: center; }
+
+/* ------------------------------------------------------------ pantallas --- */
+@media (min-width: 720px) {
+  .turnos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .campos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .campo--ancho { grid-column: 1 / -1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+
+/* ------------------------------------------------------------- impresión -- */
+@media print {
+  :root { --fondo: #fff; --capa: #fff; --capa2: #fff; --texto: #000; --tenue: #444; --borde: #bbb; }
+  body { background: #fff; color: #000; }
+  .barra, .pestanas, .tira, .libres, .anotar, .buscar, .pie, .aviso,
+  [data-panel-seccion="proximos"], [data-panel-seccion="buscar"] { display: none !important; }
+  .turnos { grid-template-columns: 1fr; gap: 8px; padding: 0; }
+  .turno { break-inside: avoid; border: 1px solid #000; box-shadow: none; }
+  .turno__acciones { display: none; }
+  .tarea { border-color: #000; }
+  .dia__cabecera { padding: 0 0 8px; }
+}
