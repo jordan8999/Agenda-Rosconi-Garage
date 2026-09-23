@@ -559,9 +559,11 @@
             <summary>¿Cuánto tiempo va a estar mi auto en el taller?</summary>
             <div class="acc__body">
               <p>
-                Depende del trabajo: un cambio de aceite y filtros es una visita corta, mientras que una
-                distribución o una reparación de motor puede llevar más de un día. Al reservar vas a ver
-                la duración estimada del servicio y, si hay que dejar el auto, te avisamos antes.
+                Depende del trabajo. Un cambio de aceite y filtros es una visita corta y se reserva
+                por horario. Los trabajos grandes (mecánica integral, distribución) se coordinan
+                <strong>dejando el auto</strong>: elegís a qué hora lo traés, queda en el taller y lo
+                retirás cuando esté listo, porque puede llevar de unas horas a un día completo según
+                lo que aparezca. Si necesitamos más tiempo, te avisamos por teléfono.
               </p>
             </div>
           </details>
@@ -691,6 +693,7 @@
 
           <p class="reserva__rotulo" id="reserva-horas-rotulo">Horarios libres</p>
           <div class="reserva__horas" data-reserva-horas role="group" aria-labelledby="reserva-horas-rotulo"></div>
+          <p class="booking-hint" data-reserva-modalidad hidden></p>
 
           <form data-reserva-form novalidate>
             <div class="campo">
@@ -970,7 +973,7 @@
         "name": "¿Cuánto tiempo va a estar mi auto en el taller?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Depende del trabajo: un cambio de aceite y filtros es una visita corta, mientras que una distribución o una reparación de motor puede llevar más de un día. Al reservar se muestra la duración estimada del servicio."
+          "text": "Depende del trabajo. Un cambio de aceite y filtros es una visita corta y se reserva por horario. Los trabajos grandes, como mecánica integral o distribución, se coordinan dejando el auto: el cliente elige a qué hora lo trae, el vehículo queda en el taller y lo retira cuando está listo, porque puede llevar de unas horas a un día completo según lo que aparezca."
         }
       },
       {

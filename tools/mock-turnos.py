@@ -41,8 +41,8 @@ CONFIG = {
         {"nombre": "Service completo y lubricentro", "minutos": 60},
         {"nombre": "Diagnóstico con scanner", "minutos": 30},
         {"nombre": "Mecánica general", "minutos": 120},
-        {"nombre": "Distribución y cadena", "minutos": 480},
-        {"nombre": "Mecánica integral", "minutos": 480},
+        {"nombre": "Distribución y cadena", "minutos": 480, "deja": True},
+        {"nombre": "Mecánica integral", "minutos": 480, "deja": True},
         {"nombre": "Reprogramación electrónica", "minutos": 120},
         {"nombre": "Otro trabajo / no estoy seguro", "minutos": 60},
     ],
@@ -109,6 +109,35 @@ def servicio(nombre) -> dict:
     return CONFIG["servicios"][0]
 
 
+def inicios_de_franja(desde: str, hasta: str, elegido: dict) -> list[int]:
+    """Minutos de inicio posibles dentro de una franja. Los trabajos en los que el
+    cliente deja el auto se entregan al comienzo de la franja (08:00 y 14:00)."""
+    if elegido.get("deja"):
+        return [minutos(desde)]
+    inicios = []
+    minuto = minutos(desde)
+    while minuto + elegido["minutos"] <= minutos(hasta):
+        inicios.append(minuto)
+        minuto += CONFIG["paso_min"]
+    return inicios
+
+
+def fin_de_turno(inicio: datetime, elegido: dict) -> datetime:
+    """Los trabajos de dejar el auto ocupan el lugar hasta el cierre del día:
+    el auto queda en el taller aunque el trabajo termine antes."""
+    if not elegido.get("deja"):
+        return inicio + timedelta(minutes=elegido["minutos"])
+    franjas = CONFIG["atencion"].get(inicio.weekday(), [])
+    cierre = max((minutos(cierre) for _, cierre in franjas), default=0)
+    if not cierre:
+        return inicio + timedelta(minutes=elegido["minutos"])
+    return datetime.combine(inicio.date(), time(cierre // 60, cierre % 60))
+
+
+def duracion_en_minutos(inicio: datetime, fin: datetime) -> int:
+    return int((fin - inicio).total_seconds() // 60)
+
+
 def ocupados(inicio: datetime, fin: datetime) -> int:
     return sum(1 for r in RESERVAS if r["inicio"] < fin and r["fin"] > inicio)
 
@@ -132,19 +161,16 @@ def agenda(nombre_servicio, dias: int) -> dict:
         turnos = []
         if not cerrado:
             for desde, hasta in franjas:
-                minuto = minutos(desde)
-                while minuto + elegido["minutos"] <= minutos(hasta):
+                for minuto in inicios_de_franja(desde, hasta, elegido):
                     inicio = datetime.combine(dia, time(minuto // 60, minuto % 60))
-                    fin = inicio + timedelta(minutes=elegido["minutos"])
-                    turno_hora = hora(minuto)
-                    minuto += CONFIG["paso_min"]
                     if inicio < limite:
                         continue
+                    fin = fin_de_turno(inicio, elegido)
                     usados = ocupados(inicio, fin)
                     if usados >= CONFIG["cupos"]:
                         continue
                     turnos.append({
-                        "hora": turno_hora,
+                        "hora": hora(minuto),
                         "estado": "libre" if usados == 0 else "ultimo",
                         "cuposLibres": CONFIG["cupos"] - usados,
                     })
@@ -165,6 +191,7 @@ def agenda(nombre_servicio, dias: int) -> dict:
         "ok": True, "zona": "America/Montevideo",
         "actualizado": ahora.strftime("%Y-%m-%d %H:%M"),
         "servicio": elegido["nombre"], "duracionMinutos": elegido["minutos"],
+        "modalidad": "dejar" if elegido.get("deja") else "horario",
         "anticipacionMinutos": CONFIG["anticipacion_min"], "cupos": CONFIG["cupos"],
         "servicios": CONFIG["servicios"], "dias": lista,
     }
@@ -190,16 +217,21 @@ def crear(cuerpo: dict) -> dict:
         inicio = datetime.fromisoformat(f"{cuerpo['fecha']}T{cuerpo['hora']}:00")
     except Exception:
         return {"ok": False, "error": "fecha_invalida", "mensaje": "Elegí otra vez el día y el horario."}
-    fin = inicio + timedelta(minutes=elegido["minutos"])
     if inicio.date() > (datetime.now() + timedelta(days=CONFIG["dias_vista"])).date():
         return {"ok": False, "error": "fuera_de_rango", "mensaje": "Ese día está fuera de la agenda abierta."}
     if inicio < datetime.now() + timedelta(minutes=CONFIG["anticipacion_min"]):
         return {"ok": False, "error": "muy_pronto", "mensaje": "Los turnos se piden con 24 h de anticipación."}
     inicio_min = inicio.hour * 60 + inicio.minute
     franjas = CONFIG["atencion"].get(inicio.weekday(), [])
-    if not any(minutos(d) <= inicio_min and inicio_min + elegido["minutos"] <= minutos(h)
-               for d, h in franjas):
+    if elegido.get("deja"):
+        # Dejar el auto: la entrega es al comienzo de una franja.
+        entra = any(minutos(abre) == inicio_min for abre, _ in franjas)
+    else:
+        entra = any(minutos(abre) <= inicio_min and inicio_min + elegido["minutos"] <= minutos(cierra)
+                    for abre, cierra in franjas)
+    if not entra:
         return {"ok": False, "error": "fuera_de_horario", "mensaje": "Ese horario queda fuera de atención."}
+    fin = fin_de_turno(inicio, elegido)
     usados = ocupados(inicio, fin)
     # Reintento del mismo cliente (se corto la conexion justo al confirmar):
     # se devuelve el turno que ya existe, sin ocupar el segundo lugar.
@@ -214,7 +246,8 @@ def crear(cuerpo: dict) -> dict:
             "cuposLibres": max(CONFIG["cupos"] - usados, 0),
             "fecha": inicio.date().isoformat(), "hora": inicio.strftime("%H:%M"),
             "etiqueta": etiqueta(inicio), "servicio": elegido["nombre"],
-            "duracionMinutos": elegido["minutos"],
+            "duracionMinutos": duracion_en_minutos(inicio, fin),
+            "modalidad": "dejar" if elegido.get("deja") else "horario",
             "mensaje": f"Ese turno ya estaba confirmado para el {etiqueta(inicio)} a las {inicio:%H:%M}.",
         }
     if usados >= CONFIG["cupos"]:
@@ -235,7 +268,8 @@ def crear(cuerpo: dict) -> dict:
         "cuposLibres": max(CONFIG["cupos"] - usados - 1, 0),
         "fecha": inicio.date().isoformat(), "hora": inicio.strftime("%H:%M"),
         "etiqueta": etiqueta(inicio), "servicio": elegido["nombre"],
-        "duracionMinutos": elegido["minutos"],
+        "duracionMinutos": duracion_en_minutos(inicio, fin),
+        "modalidad": "dejar" if elegido.get("deja") else "horario",
         "mensaje": f"Turno confirmado para el {etiqueta(inicio)} a las {inicio:%H:%M}.",
     }
 

@@ -198,18 +198,59 @@
             }, "al reabrir el dialogo se muestra la agenda actualizada");
           })
           .then(function () {
-            // Trabajo largo (480 min) que no entra en una franja de atención: el
-            // cliente tiene que ver la explicación y el WhatsApp, nunca un cuadro
-            // vacío sin salida.
+            // Los trabajos grandes se coordinan dejando el auto: el cliente ve
+            // las horas de entrega y la explicación, no una duración exacta.
             var seleccion = doc.querySelector("[data-reserva-servicio]");
-            seleccion.value = "Distribución y cadena";
+            seleccion.value = "Mecánica integral";
             seleccion.dispatchEvent(new win.Event("change"));
             return esperar(function () {
-              var respaldo = doc.querySelector("[data-reserva-respaldo]");
-              var texto = doc.querySelector("[data-reserva-respaldo-texto]");
-              return !respaldo.hidden && texto.textContent.length > 20 &&
-                doc.getElementById("reserva").open;
-            }, "sin horarios para un trabajo largo, se avisa y se ofrece el WhatsApp");
+              var api = win.RosconiTurnos;
+              return api.estado.agenda && api.estado.agenda.modalidad === "dejar" &&
+                doc.querySelectorAll(".hora").length > 0;
+            }, "al elegir un trabajo grande se cargan las horas de entrega");
+          })
+          .then(function () {
+            var horas = Array.prototype.map.call(doc.querySelectorAll(".hora"), function (boton) {
+              return boton.getAttribute("data-hora");
+            });
+            registrar(horas.length > 0 && horas.every(function (una) {
+              return una === "08:00" || una === "14:00";
+            }), "solo se ofrecen horas de entrega, no horarios de trabajo (" + horas.join(", ") + ")");
+            var nota = doc.querySelector("[data-reserva-modalidad]");
+            registrar(!nota.hidden && nota.textContent.indexOf("dejando el auto") > -1,
+                      "se explica que el auto queda en el taller");
+            registrar(doc.querySelector("#reserva-horas-rotulo").textContent.indexOf("dejar") > -1,
+                      "el rotulo pasa a ser horas para dejarlo");
+          })
+          .then(function () {
+            if (contraBackendReal) {
+              return null;
+            }
+            // Se cierran todos los días en el mock para comprobar el aviso y el
+            // WhatsApp cuando no hay ningún horario disponible.
+            var hoy = new Date();
+            var cierres = [];
+            for (var i = 0; i < 40; i += 1) {
+              var fecha = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + i);
+              cierres.push(fecha.toISOString().slice(0, 10));
+            }
+            return Promise.all(cierres.map(function (valor) {
+              return win.fetch(parametroMock + "/", {
+                method: "PUT",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ accion: "cerrar-dia", valor: valor })
+              }).then(function (respuesta) { return respuesta.json(); });
+            })).then(function () {
+              var seleccion = doc.querySelector("[data-reserva-servicio]");
+              seleccion.value = "Reprogramación electrónica";
+              seleccion.dispatchEvent(new win.Event("change"));
+              return esperar(function () {
+                var respaldo = doc.querySelector("[data-reserva-respaldo]");
+                var texto = doc.querySelector("[data-reserva-respaldo-texto]");
+                return !respaldo.hidden && texto.textContent.length > 20 &&
+                  doc.getElementById("reserva").open;
+              }, "sin ningun horario disponible, se avisa y se ofrece el WhatsApp");
+            });
           })
           .then(function () {
             registrar(!doc.querySelector("[data-reserva-panel]").hidden,

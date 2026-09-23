@@ -50,21 +50,38 @@ El cliente ve **"libre"** o **"último lugar"**. Nunca ve elevador ni piso: la
 línea que corresponde queda anotada en el título del evento
 (`Turno ELEVADOR · Golf`) solo para uso interno del taller.
 
-## Duraciones estimadas por servicio
+## Cómo se ofrecen los horarios
 
-`CONFIG.SERVICIOS` trae valores **provisionales** que hay que ajustar con los
-tiempos reales del taller. Se usan para dos cosas: calcular qué horarios se
-pueden ofrecer y qué largo tiene el evento en el calendario.
+Cada servicio de `CONFIG.SERVICIOS` tiene sus minutos y, si corresponde, la marca
+`deja: true`:
 
-| Servicio | Minutos (ajustar) |
-|---|---|
-| Service completo y lubricentro | 60 |
-| Diagnóstico con scanner | 30 |
-| Mecánica general | 120 |
-| Distribución y cadena | 480 |
-| Mecánica integral | 480 |
-| Reprogramación electrónica | 120 |
-| Otro trabajo / no estoy seguro | 60 |
+| Servicio | Minutos | Modalidad |
+|---|---|---|
+| Service completo y lubricentro | 60 | por horario |
+| Diagnóstico con scanner | 30 | por horario |
+| Mecánica general | 120 | por horario |
+| Reprogramación electrónica | 120 | por horario |
+| Otro trabajo / no estoy seguro | 60 | por horario |
+| Distribución y cadena | 480 | **deja el auto** |
+| Mecánica integral | 480 | **deja el auto** |
+
+- **Por horario:** el cliente elige día y hora, y el trabajo tiene que entrar
+  completo dentro de una franja de atención (08:00–12:00 o 14:00–18:00). Con 60
+  minutos, el último horario de la mañana es 11:00.
+- **Deja el auto** (`deja: true`): el cliente elige **a qué hora lo trae**, y solo
+  se ofrecen las 08:00 y las 14:00 (el comienzo de cada franja). El auto ocupa un
+  lugar **hasta el cierre del día**, porque el trabajo puede llevar de unas horas a
+  un día completo y muchas veces queda para el día siguiente por repuestos o
+  herramientas. No se promete una duración exacta: el cuadro de reserva lo explica
+  ("el auto queda en el taller, lo retirás cuando esté listo") y los minutos de la
+  tabla quedan solo como referencia.
+
+En el calendario esos turnos aparecen como
+`⚠️ Turno ELEVADOR · Golf 2015 (deja el auto)` y llegan hasta las 18:00. **Si el
+auto sigue en el taller al día siguiente, estirá el fin del evento** hasta el
+momento en que sale: así la agenda deja de ofrecer ese lugar.
+
+Para pasar otro servicio a esta modalidad alcanza con agregarle `deja: true`.
 
 Cualquier trabajo de 240 minutos o más se marca con ⚠️ en el título del evento
 para que el taller lo revise.

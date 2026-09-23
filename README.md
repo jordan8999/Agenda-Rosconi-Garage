@@ -29,7 +29,7 @@ reservados** con una agenda propia (Google Calendar + Google Apps Script, sin pl
 └─ tools/
    ├─ appsscript/             # Backend de turnos (Code.gs + appsscript.json + guía)
    ├─ mock-turnos.py          # Backend falso para probar en local (mismo contrato)
-   ├─ pruebas-turnos.py       # 45 pruebas del contrato de reservas (mock o backend real)
+   ├─ pruebas-turnos.py       # 55 pruebas del contrato de reservas (mock o backend real)
    ├─ pruebas-ui.html         # Pruebas de integración manejando el sitio en un navegador
    ├─ pruebas-sintaxis.html   # Compila los scripts con el parser del navegador
    ├─ diagnostico-endpoint.html # Consulta el backend real desde el navegador
@@ -97,6 +97,8 @@ calendario roto: nunca hay un callejón sin salida.
 | Anticipación mínima | 24 h |
 | Agenda abierta | 30 días |
 | Intervalo entre turnos | 30 min |
+| Trabajos por horario | Entran completos en una franja (08:00–12:00 o 14:00–18:00) |
+| Trabajos que dejan el auto | Entrega a las 08:00 o 14:00; ocupan el lugar hasta el cierre |
 | Límite antiabuso | 2 reservas por teléfono y 12 por día (se libera al cancelar) |
 | Cerrar un día (feriado) | evento de todo el día en el calendario |
 
@@ -115,17 +117,28 @@ Todos los caminos abren el **mismo** cuadro de reserva: el botón del hero, el d
 sección de turnos y el `data-servicio="..."` de cada tarjeta de servicio (que además preselecciona
 el trabajo).
 
-### Duraciones por servicio
+### Cómo se ofrecen los horarios
 
-`CONFIG.SERVICIOS` de `tools/appsscript/Code.gs` guarda los minutos estimados de cada trabajo y son
-**provisionales**: hay que ajustarlos con los tiempos reales del taller (tabla en
-`tools/appsscript/README.md`). Se usan para calcular los horarios ofrecidos y el largo del evento.
+Hay dos modalidades, definidas por servicio en `CONFIG.SERVICIOS` de `tools/appsscript/Code.gs`:
+
+- **Por horario** (`minutos`): el cliente elige día y hora, y el trabajo tiene que entrar completo
+  dentro de una franja de atención. Hoy: service completo (60), diagnóstico (30), mecánica general
+  (120), reprogramación electrónica (120) y "otro trabajo" (60).
+- **Deja el auto** (`deja: true`): el cliente elige **a qué hora lo trae** (solo 08:00 o 14:00) y el
+  auto ocupa un lugar **hasta el cierre del día**. Es el caso de mecánica integral y distribución,
+  que pueden llevar de unas horas a un día completo y a veces quedan para el día siguiente por
+  repuestos o herramientas. El cuadro de reserva lo explica y el evento del calendario queda marcado
+  `(deja el auto)`.
+
+Si el auto sigue en el taller al día siguiente, se estira el fin del evento en el calendario para que
+la agenda no ofrezca ese lugar de más. Para pasar otro servicio a esta modalidad alcanza con
+agregarle `deja: true`.
 
 ### Probar sin tocar la agenda real
 
 ```powershell
 python tools/mock-turnos.py        # backend falso en http://127.0.0.1:8130
-python tools/pruebas-turnos.py     # 45 pruebas del contrato (cupos, límites, cancelación)
+python tools/pruebas-turnos.py     # 55 pruebas del contrato (cupos, límites, modalidades)
 python -m http.server 8125         # sitio; después abrir tools/pruebas-ui.html
 ```
 

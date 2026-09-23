@@ -17,6 +17,7 @@ import http.cookiejar
 import json
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import date, datetime, timedelta
 
@@ -69,7 +70,7 @@ def verificar(condicion: bool, descripcion: str) -> None:
 
 
 def agenda_de(url: str, servicio: str = SERVICIO) -> dict:
-    return pedir(url, f"/?action=agenda&clave={CLAVE}&servicio={servicio.replace(' ', '%20')}")
+    return pedir(url, f"/?action=agenda&clave={CLAVE}&servicio={urllib.parse.quote(servicio)}")
 
 
 def datos_reserva(**extra) -> dict:
@@ -255,6 +256,47 @@ def main() -> int:
 
     for pendiente in propios[1:] + [liberado.get("codigo", "")]:
         pedir(url, "/", {"accion": "cancelar", "clave": CLAVE, "codigo": pendiente})
+
+    print("\n8. Trabajos en los que el cliente deja el auto")
+    servicio_deja = "Mecánica integral"
+    agenda_deja = agenda_de(url, servicio_deja)
+    verificar(agenda_deja.get("modalidad") == "dejar",
+              "la agenda avisa que el auto se deja en el taller")
+    dias_deja = [d for d in agenda_deja["dias"] if d["turnos"]]
+    verificar(len(dias_deja) > 0, "un trabajo de dejar el auto tiene dias disponibles")
+    horas_deja = sorted({t["hora"] for d in dias_deja for t in d["turnos"]})
+    verificar(horas_deja == ["08:00", "14:00"],
+              f"solo ofrece horas de entrega al comienzo de cada franja ({horas_deja})")
+
+    fecha_entrega = dias_deja[0]["fecha"]
+    hora_entrega = dias_deja[0]["turnos"][0]["hora"]
+    entrega = pedir(url, "/", datos_reserva(fecha=fecha_entrega, hora=hora_entrega,
+                                            servicio=servicio_deja, nombre="Deja Prueba",
+                                            telefono="099666222"))
+    verificar(entrega.get("ok") is True, "se registra la entrega del auto")
+    verificar(entrega.get("modalidad") == "dejar",
+              "la reserva queda marcada como dejar el auto")
+    verificar(entrega.get("duracionMinutos") == (600 if hora_entrega == "08:00" else 240),
+              "el auto ocupa el lugar hasta el cierre del dia")
+
+    media_manana = pedir(url, "/", datos_reserva(fecha=fecha_entrega, hora="09:00",
+                                                 servicio=servicio_deja, nombre="Deja Prueba",
+                                                 telefono="099666333"))
+    verificar(media_manana.get("error") == "fuera_de_horario",
+              "no se puede entregar el auto a las 09:00 (solo al comienzo de la franja)")
+
+    dia_con_entrega = next((d for d in agenda_de(url)["dias"] if d["fecha"] == fecha_entrega), None)
+    verificar(dia_con_entrega is not None and dia_con_entrega["turnos"] and
+              all(t["cuposLibres"] == 1 for t in dia_con_entrega["turnos"]),
+              "ese dia queda un solo lugar para los trabajos por horario")
+
+    verificar(pedir(url, "/", {"accion": "cancelar", "clave": CLAVE,
+                               "codigo": entrega.get("codigo", "")}).get("ok") is True,
+              "se cancela la entrega del auto")
+    dia_devuelto = next((d for d in agenda_de(url)["dias"] if d["fecha"] == fecha_entrega), None)
+    verificar(dia_devuelto is not None and dia_devuelto["turnos"] and
+              all(t["cuposLibres"] == 2 for t in dia_devuelto["turnos"]),
+              "al cancelar, el dia vuelve a tener los dos lugares")
 
     fallas = [descripcion for ok, descripcion in RESULTADOS if not ok]
     print(f"\nRESULTADO: {len(RESULTADOS) - len(fallas)}/{len(RESULTADOS)} pruebas OK")

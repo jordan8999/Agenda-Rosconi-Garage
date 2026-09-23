@@ -59,14 +59,20 @@ var CONFIG = {
   DIAS_VISTA: 30,          // hasta 30 dias para adelante
   CUPOS: 2,                // 1 elevador + 1 piso de desborde
 
-  // Duracion estimada por servicio, en minutos.
-  // >>> AJUSTAR con la tabla real de tiempos del taller <<<
+  // Servicios del taller.
+  //   minutos: duracion estimada del trabajo. Define que horarios se ofrecen
+  //            y cuanto ocupa el evento en el calendario.
+  //   deja:    true = el cliente DEJA EL AUTO en el taller. Elige solo la hora
+  //            de entrega (el comienzo de cada franja) y el auto ocupa un lugar
+  //            hasta el cierre. No se promete una duracion exacta: el trabajo
+  //            puede llevar de 4 a 24 horas, y si el auto sigue en el taller al
+  //            dia siguiente se estira el evento a mano en el calendario.
   SERVICIOS: [
     { nombre: 'Service completo y lubricentro', minutos: 60 },
     { nombre: 'Diagnóstico con scanner', minutos: 30 },
     { nombre: 'Mecánica general', minutos: 120 },
-    { nombre: 'Distribución y cadena', minutos: 480 },
-    { nombre: 'Mecánica integral', minutos: 480 },
+    { nombre: 'Distribución y cadena', minutos: 480, deja: true },
+    { nombre: 'Mecánica integral', minutos: 480, deja: true },
     { nombre: 'Reprogramación electrónica', minutos: 120 },
     { nombre: 'Otro trabajo / no estoy seguro', minutos: 60 }
   ],
@@ -167,6 +173,11 @@ function sumarMinutos_(fecha, minutos) {
   return new Date(fecha.getTime() + minutos * 60000);
 }
 
+/** Minutos entre dos momentos (lo que ocupa el turno en la agenda). */
+function duracionEnMinutos_(inicio, fin) {
+  return Math.round((fin.getTime() - inicio.getTime()) / 60000);
+}
+
 function minutosDelDia_(horaTexto) {
   var partes = String(horaTexto).split(':');
   return Number(partes[0]) * 60 + Number(partes[1] || 0);
@@ -229,7 +240,7 @@ function leerAgenda_(parametros) {
 
   var lista = [];
   for (var i = 0; i < dias; i++) {
-    lista.push(armarDia_(sumarDias_(primerDia, i), eventos, elegido.minutos, limite));
+    lista.push(armarDia_(sumarDias_(primerDia, i), eventos, elegido, limite));
   }
 
   var respuesta = {
@@ -238,6 +249,7 @@ function leerAgenda_(parametros) {
     actualizado: Utilities.formatDate(ahora, CONFIG.ZONA, "yyyy-MM-dd HH:mm"),
     servicio: elegido.nombre,
     duracionMinutos: elegido.minutos,
+    modalidad: elegido.deja ? 'dejar' : 'horario',
     anticipacionMinutos: CONFIG.ANTICIPACION_MIN,
     cupos: CONFIG.CUPOS,
     servicios: CONFIG.SERVICIOS,
@@ -283,24 +295,61 @@ function esDiaCerrado_(eventos, fecha) {
   return false;
 }
 
-function armarDia_(fecha, eventos, minutos, limite) {
+/** Minutos de inicio posibles dentro de una franja.
+ *  Los trabajos en los que el cliente deja el auto se entregan al comienzo de
+ *  cada franja (08:00 y 14:00); el resto empieza cada PASO_MIN. */
+function iniciosDeFranja_(desde, hasta, elegido) {
+  if (elegido.deja) {
+    return [desde];
+  }
+  var inicios = [];
+  for (var minuto = desde; minuto + elegido.minutos <= hasta; minuto += CONFIG.PASO_MIN) {
+    inicios.push(minuto);
+  }
+  return inicios;
+}
+
+/** Fin del turno. Los trabajos de dejar el auto ocupan el lugar hasta el cierre:
+ *  el auto queda en el taller aunque el trabajo termine antes, y si sigue al dia
+ *  siguiente se estira el evento a mano en el calendario. */
+function finDeTurno_(inicio, elegido) {
+  if (!elegido.deja) {
+    return sumarMinutos_(inicio, elegido.minutos);
+  }
+  var franjas = CONFIG.ATENCION[inicio.getDay()] || [];
+  var cierre = 0;
+  for (var i = 0; i < franjas.length; i++) {
+    cierre = Math.max(cierre, minutosDelDia_(franjas[i][1]));
+  }
+  if (!cierre) {
+    return sumarMinutos_(inicio, elegido.minutos);
+  }
+  return new Date(
+    inicio.getFullYear(), inicio.getMonth(), inicio.getDate(),
+    Math.floor(cierre / 60), cierre % 60, 0, 0
+  );
+}
+
+function armarDia_(fecha, eventos, elegido, limite) {
   var franjas = CONFIG.ATENCION[fecha.getDay()] || [];
   var cerrado = franjas.length === 0 || esDiaCerrado_(eventos, fecha);
   var turnos = [];
 
   if (!cerrado) {
     for (var f = 0; f < franjas.length; f++) {
-      var desde = minutosDelDia_(franjas[f][0]);
-      var hasta = minutosDelDia_(franjas[f][1]);
-      for (var minuto = desde; minuto + minutos <= hasta; minuto += CONFIG.PASO_MIN) {
+      var inicios = iniciosDeFranja_(
+        minutosDelDia_(franjas[f][0]), minutosDelDia_(franjas[f][1]), elegido
+      );
+      for (var j = 0; j < inicios.length; j++) {
+        var minuto = inicios[j];
         var inicio = new Date(
           fecha.getFullYear(), fecha.getMonth(), fecha.getDate(),
           Math.floor(minuto / 60), minuto % 60, 0, 0
         );
-        var fin = sumarMinutos_(inicio, minutos);
         if (inicio.getTime() < limite.getTime()) {
           continue;
         }
+        var fin = finDeTurno_(inicio, elegido);
         var ocupados = ocupacion_(eventos, inicio, fin);
         if (ocupados >= CONFIG.CUPOS) {
           continue;
@@ -404,10 +453,16 @@ function validarReserva_(datos) {
 
   var franjas = CONFIG.ATENCION[inicio.getDay()] || [];
   var desdeMin = minutosDelDia_(horaTexto);
-  var hastaMin = desdeMin + elegido.minutos;
   var entra = false;
   for (var i = 0; i < franjas.length; i++) {
-    if (desdeMin >= minutosDelDia_(franjas[i][0]) && hastaMin <= minutosDelDia_(franjas[i][1])) {
+    var abre = minutosDelDia_(franjas[i][0]);
+    var cierra = minutosDelDia_(franjas[i][1]);
+    if (elegido.deja) {
+      // Dejar el auto: la entrega es al comienzo de una franja.
+      if (desdeMin === abre) {
+        entra = true;
+      }
+    } else if (desdeMin >= abre && desdeMin + elegido.minutos <= cierra) {
       entra = true;
     }
   }
@@ -415,7 +470,7 @@ function validarReserva_(datos) {
     return error_('fuera_de_horario', 'Ese horario queda fuera del horario de atención.');
   }
 
-  if (desdeMin % CONFIG.PASO_MIN !== 0) {
+  if (!elegido.deja && desdeMin % CONFIG.PASO_MIN !== 0) {
     return error_('horario_invalido', 'Los turnos empiezan cada ' + CONFIG.PASO_MIN + ' minutos.');
   }
 
@@ -430,7 +485,7 @@ function validarReserva_(datos) {
     horaTexto: horaTexto,
     servicio: elegido,
     inicio: inicio,
-    fin: sumarMinutos_(inicio, elegido.minutos)
+    fin: finDeTurno_(inicio, elegido)
   };
 }
 
@@ -510,7 +565,8 @@ function crearReserva_(datos) {
         hora: validacion.horaTexto,
         etiqueta: etiquetaDia_(validacion.inicio),
         servicio: validacion.servicio.nombre,
-        duracionMinutos: validacion.servicio.minutos,
+        duracionMinutos: duracionEnMinutos_(validacion.inicio, validacion.fin),
+        modalidad: validacion.servicio.deja ? 'dejar' : 'horario',
         mensaje: 'Ese turno ya estaba confirmado para el ' +
           etiquetaDia_(validacion.inicio) + ' a las ' + validacion.horaTexto + '.'
       };
@@ -535,7 +591,9 @@ function crearReserva_(datos) {
 
     var detalle = [
       'Código: ' + codigo,
-      'Servicio: ' + validacion.servicio.nombre + ' (' + validacion.servicio.minutos + ' min)',
+      'Servicio: ' + validacion.servicio.nombre + (validacion.servicio.deja
+        ? ' (deja el auto)'
+        : ' (' + validacion.servicio.minutos + ' min)'),
       'Vehículo: ' + validacion.vehiculo,
       'Cliente: ' + validacion.nombre,
       'Teléfono: ' + validacion.telefono,
@@ -555,7 +613,8 @@ function crearReserva_(datos) {
     }
 
     calendario_().createEvent(
-      largo + 'Turno ' + linea + ' · ' + validacion.vehiculo,
+      largo + 'Turno ' + linea + ' · ' + validacion.vehiculo +
+        (validacion.servicio.deja ? ' (deja el auto)' : ''),
       validacion.inicio,
       validacion.fin,
       opciones
@@ -573,7 +632,8 @@ function crearReserva_(datos) {
       hora: validacion.horaTexto,
       etiqueta: etiquetaDia_(validacion.inicio),
       servicio: validacion.servicio.nombre,
-      duracionMinutos: validacion.servicio.minutos,
+      duracionMinutos: duracionEnMinutos_(validacion.inicio, validacion.fin),
+      modalidad: validacion.servicio.deja ? 'dejar' : 'horario',
       mensaje: 'Turno confirmado para el ' + etiquetaDia_(validacion.inicio) +
         ' a las ' + validacion.horaTexto + '.'
     };

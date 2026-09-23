@@ -209,6 +209,7 @@
     refs.panel.hidden = false;
     refs.respaldo.hidden = true;
     refs.exito.hidden = true;
+    aplicarModalidad(datos.modalidad === "dejar");
     pintarDias(datos.dias || []);
     actualizarBotonEnviar();
   }
@@ -321,15 +322,35 @@
     anunciar("", "");
   }
 
+  function modoDejar() {
+    return Boolean(estado.agenda && estado.agenda.modalidad === "dejar");
+  }
+
   function actualizarBotonEnviar() {
     if (!refs.enviar) {
       return;
     }
     var listo = Boolean(estado.fecha && estado.hora);
+    var deja = modoDejar();
     refs.enviar.disabled = !listo;
     refs.enviar.textContent = listo
-      ? "Confirmar turno"
+      ? (deja ? "Confirmar entrega" : "Confirmar turno")
       : "Elegí un día y un horario";
+  }
+
+  /** Ajusta los textos del cuadro según si el auto se deja o se espera. */
+  function aplicarModalidad(deja) {
+    if (refs.rotuloHoras) {
+      refs.rotuloHoras.textContent = deja ? "Horas para dejarlo" : "Horarios libres";
+    }
+    if (refs.modalidad) {
+      refs.modalidad.hidden = !deja;
+      refs.modalidad.textContent = deja
+        ? "Este trabajo se hace dejando el auto en el taller: lo traés en el horario que " +
+          "elijas y lo retirás cuando esté listo (puede ser el mismo día o el siguiente). " +
+          "Te avisamos por teléfono."
+        : "";
+    }
   }
 
   /* -------------------------------------------------- respaldo por WhatsApp */
@@ -479,7 +500,8 @@
     estado.hora = null;
     actualizarBotonEnviar();
 
-    refs.resumen.textContent = reserva.etiqueta + " a las " + reserva.hora +
+    refs.resumen.textContent = (reserva.modalidad === "dejar" ? "Dejás el auto: " : "") +
+      reserva.etiqueta + " a las " + reserva.hora +
       " · " + reserva.servicio;
     refs.codigo.textContent = reserva.codigo;
 
@@ -617,6 +639,8 @@
     refs.estado = buscarUno("[data-reserva-estado]");
     refs.dias = buscarUno("[data-reserva-dias]");
     refs.horas = buscarUno("[data-reserva-horas]");
+    refs.rotuloHoras = buscarUno("#reserva-horas-rotulo");
+    refs.modalidad = buscarUno("[data-reserva-modalidad]");
     refs.form = buscarUno("[data-reserva-form]");
     refs.nombre = buscarUno("#reserva-nombre");
     refs.telefono = buscarUno("#reserva-telefono");
