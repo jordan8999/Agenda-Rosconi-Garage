@@ -83,7 +83,9 @@
     })
       .then(function (respuesta) { return respuesta.json(); })
       .then(function (datos) {
-        if (!datos || (datos.ok !== true && datos.error === "clave_admin_invalida")) {
+        var mensaje = String((datos && datos.mensaje) || "");
+        if (!datos || (datos.ok !== true &&
+            (datos.error === "clave_admin_invalida" || /clave del panel/i.test(mensaje)))) {
           salir("La clave del panel no es válida. Volvé a escribirla.", "error");
           throw new Error("clave_invalida");
         }

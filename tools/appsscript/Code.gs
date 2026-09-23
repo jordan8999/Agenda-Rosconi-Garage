@@ -140,7 +140,10 @@ function doPost(e) {
 
     // Acciones del panel del taller: van con la clave de administracion.
     if (ACCIONES_ADMIN.indexOf(accion) > -1) {
-      exigirClaveAdmin_(cuerpo.claveAdmin);
+      var problema = errorClaveAdmin_(cuerpo.claveAdmin);
+      if (problema) {
+        return respuesta_(problema);
+      }
       return respuesta_(accionAdmin_(cuerpo));
     }
 
@@ -170,10 +173,14 @@ function exigirClave_(clave) {
   }
 }
 
-function exigirClaveAdmin_(clave) {
-  if (String(clave || '') !== claveAdmin_()) {
-    throw new Error('Clave del panel invalida.');
+/** Devuelve el error si la clave del panel no es valida (o null si esta bien).
+ *  Se devuelve un error con codigo propio en vez de lanzar una excepcion, para
+ *  que el panel reciba siempre `clave_admin_invalida` y vuelva al ingreso. */
+function errorClaveAdmin_(clave) {
+  if (String(clave || '') === claveAdmin_()) {
+    return null;
   }
+  return error_('clave_admin_invalida', 'Clave del panel invalida.');
 }
 
 /** Clave del panel: vive en las propiedades del script (no en el codigo).
