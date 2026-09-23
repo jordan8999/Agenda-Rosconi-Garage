@@ -44,6 +44,7 @@ Listo: desde ese momento las reservas de la web caen solas en el calendario.
 | Agenda abierta | 30 días | `CONFIG.DIAS_VISTA` |
 | Intervalo entre turnos | 30 min | `CONFIG.PASO_MIN` |
 | Máximo de reservas web por día | 12 | `CONFIG.MAX_RESERVAS_POR_DIA` |
+| Máximo por teléfono | 2 (el cupo se libera al cancelar) | `CONFIG.MAX_RESERVAS_POR_TELEFONO` |
 
 El cliente ve **"libre"** o **"último lugar"**. Nunca ve elevador ni piso: la
 línea que corresponde queda anotada en el título del evento
