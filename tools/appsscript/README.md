@@ -91,6 +91,29 @@ para que el taller lo revise.
 Cargar en el calendario un **evento de todo el día** en esa fecha. El día deja
 de ofrecerse automáticamente.
 
+## Lo que ve el taller
+
+Los turnos de la web llegan al **Google Calendar** del taller como eventos:
+
+- **Título:** `⚠️ Turno ELEVADOR · Golf 2015 (deja el auto)`. El ⚠️ avisa que es un
+  trabajo largo, `ELEVADOR`/`PISO` es la línea interna que le tocó y al final va el auto.
+- **Ficha (descripción del evento):** código del cliente, servicio con su duración (o la
+  marca de que el auto se deja), vehículo, cliente, teléfono, **link directo a WhatsApp y
+  a llamar con un clic**, email y el comentario del cliente.
+- **Horario:** el evento ocupa exactamente el lugar que se le sacó a la agenda, así se ve
+  de un vistazo cuánto tiempo está tomado cada lugar.
+- **Recordatorio emergente** 60 minutos antes del turno (`CONFIG.AVISO_MINUTOS_ANTES`),
+  que también suena en el celular si tiene la app del calendario.
+
+Además, todos los días a las 7:30 el taller recibe **un mail con el resumen del día**: hora
+de cada turno, auto, cliente con teléfono, trabajo, línea (elevador o piso) y la marca de
+los autos que quedan en el taller. Se puede ver en cualquier momento ejecutando
+`verResumenDeHoy` desde el editor, sin esperar el mail.
+
+Para cambiar la hora del resumen o mandarlo a otra casilla se toca `CONFIG.RESUMEN_HORA`,
+`CONFIG.RESUMEN_MINUTO` y `CONFIG.RESUMEN_EMAIL` (vacío = la cuenta que desplegó el script)
+y se vuelve a ejecutar `instalar`.
+
 ## Cambiar algo después
 
 Si se edita `Code.gs`, hay que volver a implementar: **Implementar > Administrar

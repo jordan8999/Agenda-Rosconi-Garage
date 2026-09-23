@@ -64,6 +64,19 @@ def pedir(url: str, ruta: str, cuerpo: dict | None = None) -> dict:
     raise RuntimeError("El backend no respondio.")
 
 
+def control(url: str, accion: str, valor: str = "") -> dict:
+    """Atajos del mock local para revisar lo que ve el taller (no existen en
+    Apps Script: ahi la ficha se mira en Google Calendar)."""
+    peticion = urllib.request.Request(
+        url.rstrip("/") + "/",
+        data=json.dumps({"accion": accion, "valor": valor}).encode("utf-8"),
+        headers={"Content-Type": "text/plain;charset=utf-8"},
+        method="PUT",
+    )
+    with ABRIDOR.open(peticion, timeout=30) as respuesta:
+        return json.loads(respuesta.read().decode("utf-8"))
+
+
 def verificar(condicion: bool, descripcion: str) -> None:
     RESULTADOS.append((bool(condicion), descripcion))
     print(f"  {'OK   ' if condicion else 'FALLA'}  {descripcion}")
@@ -114,6 +127,7 @@ def main() -> int:
     args = parser.parse_args()
     url = args.url.rstrip("/")
     CLAVE = args.clave
+    es_local = "127.0.0.1" in url or "localhost" in url
     print(f"\n=== Pruebas de turnos contra {url} ===\n")
 
     print("1. Autenticacion y lectura de agenda")
@@ -297,6 +311,81 @@ def main() -> int:
     verificar(dia_devuelto is not None and dia_devuelto["turnos"] and
               all(t["cuposLibres"] == 2 for t in dia_devuelto["turnos"]),
               "al cancelar, el dia vuelve a tener los dos lugares")
+
+    print("\n9. Ficha del turno y resumen para el taller")
+    if not es_local:
+        print("  (se omite: la ficha y el resumen se verifican contra el mock local;")
+        print("   en el backend real esa informacion se ve en Google Calendar)")
+    else:
+        libres = []
+        for dia in agenda_de(url)["dias"]:
+            for turno in dia["turnos"]:
+                if turno["estado"] == "libre":
+                    libres.append((dia["fecha"], turno["hora"]))
+            if len(libres) >= 2:
+                break
+
+        dia_corto, hora_corto = libres[0]
+        corto = pedir(url, "/", datos_reserva(fecha=dia_corto, hora=hora_corto,
+                                              nombre="Ficha Prueba", telefono="099777333",
+                                              vehiculo="Fiat Cronos 2021",
+                                              email="cliente@ejemplo.com",
+                                              comentario="Ruido en la suspension delantera"))
+        verificar(corto.get("ok") is True, "se registra el turno del que se revisa la ficha")
+
+        ficha = control(url, "ficha", corto.get("codigo", ""))
+        texto_ficha = ficha.get("descripcion", "")
+        verificar(ficha.get("ok") is True, "el taller puede abrir la ficha del turno")
+        verificar(ficha.get("linea") in ("ELEVADOR", "PISO"),
+                  "la ficha indica la linea del taller (" + str(ficha.get("linea")) + ")")
+        for dato in ["Código: " + corto.get("codigo", ""),
+                     "Servicio: Service completo y lubricentro (60 min)",
+                     "Vehículo: Fiat Cronos 2021",
+                     "Cliente: Ficha Prueba",
+                     "Teléfono: 099777333",
+                     "Email: cliente@ejemplo.com",
+                     "Comentario: Ruido en la suspension delantera",
+                     "Reservado desde la web de Rosconi Garage."]:
+            verificar(dato in texto_ficha, "la ficha incluye «" + dato + "»")
+        verificar("https://wa.me/59899777333" in texto_ficha,
+                  "la ficha trae el WhatsApp del cliente con un clic")
+        verificar("tel:+59899777333" in texto_ficha,
+                  "la ficha trae el link para llamar al cliente")
+
+        dias_entrega = [d for d in agenda_de(url, "Mecánica integral")["dias"] if d["turnos"]]
+        dia_entrega = dias_entrega[0]["fecha"]
+        entrega = pedir(url, "/", datos_reserva(fecha=dia_entrega,
+                                                hora=dias_entrega[0]["turnos"][0]["hora"],
+                                                servicio="Mecánica integral",
+                                                nombre="Deja Ficha", telefono="099777444",
+                                                vehiculo="Toyota Hilux 2019"))
+        verificar(entrega.get("ok") is True, "se registra la entrega para revisar su ficha")
+        ficha_entrega = control(url, "ficha", entrega.get("codigo", ""))
+        verificar("(deja el auto)" in ficha_entrega.get("descripcion", ""),
+                  "la ficha avisa cuando el auto queda en el taller")
+
+        resumen = control(url, "resumen", dia_entrega)
+        texto_resumen = resumen.get("resumen", "")
+        verificar("Turnos de Rosconi Garage para" in texto_resumen,
+                  "el resumen arranca con el dia")
+        verificar("Toyota Hilux 2019" in texto_resumen and "Deja Ficha" in texto_resumen,
+                  "el resumen lista el auto que se deja, con el cliente")
+        verificar("DEJA EL AUTO" in texto_resumen,
+                  "el resumen marca los autos que quedan en el taller")
+        verificar(("elevador" in texto_resumen.lower()) or ("piso" in texto_resumen.lower()),
+                  "el resumen indica en que linea entra cada auto")
+        if dia_corto == dia_entrega:
+            verificar("Fiat Cronos 2021" in texto_resumen,
+                      "el resumen lista tambien el trabajo por horario")
+
+        ayer = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        verificar("no hay turnos agendados" in control(url, "resumen", ayer).get("resumen", ""),
+                  "el resumen avisa cuando el dia no tiene turnos")
+
+        limpieza = [pedir(url, "/", {"accion": "cancelar", "clave": CLAVE,
+                                     "codigo": pendiente}).get("ok")
+                    for pendiente in [corto.get("codigo", ""), entrega.get("codigo", "")]]
+        verificar(all(limpieza), "se cancelan los turnos de la prueba de la ficha")
 
     fallas = [descripcion for ok, descripcion in RESULTADOS if not ok]
     print(f"\nRESULTADO: {len(RESULTADOS) - len(fallas)}/{len(RESULTADOS)} pruebas OK")

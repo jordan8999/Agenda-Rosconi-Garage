@@ -81,7 +81,15 @@ var CONFIG = {
 
   MAX_RESERVAS_POR_DIA: 12,
   MAX_RESERVAS_POR_TELEFONO: 2,
-  LOCK_MS: 15000
+  LOCK_MS: 15000,
+
+  // --- Avisos para el taller -------------------------------------------------
+  // Recordatorio emergente en el calendario, minutos antes del turno (0 = no).
+  AVISO_MINUTOS_ANTES: 60,
+  // Resumen diario por mail con los turnos del dia.
+  RESUMEN_HORA: 7,
+  RESUMEN_MINUTO: 30,
+  RESUMEN_EMAIL: ''       // vacio = la cuenta de Google que desplego el script
 };
 
 // ===========================================================================
@@ -597,6 +605,8 @@ function crearReserva_(datos) {
       'Vehículo: ' + validacion.vehiculo,
       'Cliente: ' + validacion.nombre,
       'Teléfono: ' + validacion.telefono,
+      'WhatsApp: https://wa.me/' + telefonoInternacional_(validacion.telefono),
+      'Llamar: tel:+' + telefonoInternacional_(validacion.telefono),
       validacion.email ? 'Email: ' + validacion.email : '',
       validacion.comentario ? 'Comentario: ' + validacion.comentario : '',
       '',
@@ -612,13 +622,18 @@ function crearReserva_(datos) {
       opciones.sendInvites = true;
     }
 
-    calendario_().createEvent(
+    var evento = calendario_().createEvent(
       largo + 'Turno ' + linea + ' · ' + validacion.vehiculo +
         (validacion.servicio.deja ? ' (deja el auto)' : ''),
       validacion.inicio,
       validacion.fin,
       opciones
     );
+
+    // Recordatorio para el taller: aparece en el calendario y en el celular.
+    if (CONFIG.AVISO_MINUTOS_ANTES > 0) {
+      evento.addPopupReminder(CONFIG.AVISO_MINUTOS_ANTES);
+    }
 
     contarReserva_(validacion.telefono);
     invalidarAgenda_();
@@ -690,6 +705,19 @@ function telefonoDeEvento_(evento) {
   return encontrado ? encontrado[1] : '';
 }
 
+/** Telefono en formato internacional para los links de WhatsApp y llamadas.
+ *  '099123456' -> '59899123456' */
+function telefonoInternacional_(telefono) {
+  var digitos = String(telefono || '').replace(/\D/g, '');
+  if (digitos.indexOf('598') === 0) {
+    return digitos;
+  }
+  if (digitos.charAt(0) === '0') {
+    digitos = digitos.slice(1);
+  }
+  return '598' + digitos;
+}
+
 function buscarPorCodigo_(codigo) {
   var buscado = String(codigo || '').trim().toUpperCase();
   if (!/^RG-[A-Z0-9]{8}$/.test(buscado)) {
@@ -755,6 +783,108 @@ function cancelarReserva_(cuerpo) {
 }
 
 // ===========================================================================
+// Resumen para el taller
+// ===========================================================================
+/** Valor de una linea "Etiqueta: valor" de la ficha del turno. */
+function valorDe_(descripcion, etiqueta) {
+  var encontrado = String(descripcion || '').match(new RegExp(etiqueta + ': (.+)'));
+  return encontrado ? encontrado[1].trim() : '';
+}
+
+/** Un renglon por turno: hora, auto, cliente, telefono, trabajo y linea. */
+function renglonDeTurno_(evento) {
+  var detalle = String(evento.getDescription() || '');
+  var titulo = String(evento.getTitle() || '');
+  var linea = titulo.indexOf('ELEVADOR') > -1 ? 'elevador'
+    : (titulo.indexOf('PISO') > -1 ? 'piso' : '');
+  var renglon = Utilities.formatDate(evento.getStartTime(), CONFIG.ZONA, 'HH:mm') +
+    ' a ' + Utilities.formatDate(evento.getEndTime(), CONFIG.ZONA, 'HH:mm') +
+    ' · ' + valorDe_(detalle, 'Vehículo') +
+    ' · ' + valorDe_(detalle, 'Cliente') +
+    ' (' + valorDe_(detalle, 'Teléfono') + ')' +
+    ' · ' + valorDe_(detalle, 'Servicio') +
+    (linea ? ' · ' + linea : '') +
+    (titulo.indexOf('(deja el auto)') > -1 ? ' · DEJA EL AUTO' : '');
+  var comentario = valorDe_(detalle, 'Comentario');
+  if (comentario) {
+    renglon += '\n    ' + comentario;
+  }
+  return renglon;
+}
+
+/** Texto con los turnos de un dia, listo para mandar al taller. */
+function resumenDelDia_(fecha) {
+  var inicio = momento_(claveFecha_(fecha), '00:00');
+  var eventos = calendario_().getEvents(inicio, sumarDias_(inicio, 1));
+  var ordenados = [];
+
+  for (var i = 0; i < eventos.length; i++) {
+    if (eventos[i].isAllDayEvent()) {
+      continue;
+    }
+    if (String(eventos[i].getDescription() || '').indexOf('Código: RG-') === -1) {
+      continue;
+    }
+    ordenados.push(eventos[i]);
+  }
+  ordenados.sort(function (a, b) {
+    return a.getStartTime().getTime() - b.getStartTime().getTime();
+  });
+
+  var encabezado = 'Turnos de Rosconi Garage para ' + etiquetaDia_(inicio);
+  if (!ordenados.length) {
+    return encabezado + ': no hay turnos agendados por la web.';
+  }
+
+  var lineas = [encabezado + ':', ''];
+  for (var j = 0; j < ordenados.length; j++) {
+    lineas.push((j + 1) + '. ' + renglonDeTurno_(ordenados[j]));
+  }
+  lineas.push('');
+  lineas.push('Si el auto queda para el dia siguiente, estira el evento en el calendario.');
+  return lineas.join('\n');
+}
+
+/** Manda el resumen del dia por mail. Lo dispara la tarea programada. */
+function enviarResumenDelDia() {
+  var destino = CONFIG.RESUMEN_EMAIL || Session.getEffectiveUser().getEmail();
+  if (!destino) {
+    return;
+  }
+  var hoy = new Date();
+  MailApp.sendEmail(
+    destino,
+    'Turnos de hoy · Rosconi Garage (' +
+      Utilities.formatDate(hoy, CONFIG.ZONA, 'dd/MM/yyyy') + ')',
+    resumenDelDia_(hoy)
+  );
+  Logger.log('Resumen del dia enviado a ' + destino);
+}
+
+/** Ejecutar a mano desde el editor para ver como queda el resumen de hoy. */
+function verResumenDeHoy() {
+  Logger.log(resumenDelDia_(new Date()));
+}
+
+/** (Re)programa el resumen diario por mail. */
+function programarResumen_() {
+  var disparadores = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < disparadores.length; i++) {
+    if (disparadores[i].getHandlerFunction() === 'enviarResumenDelDia') {
+      ScriptApp.deleteTrigger(disparadores[i]);
+    }
+  }
+  ScriptApp.newTrigger('enviarResumenDelDia')
+    .timeBased()
+    .atHour(CONFIG.RESUMEN_HORA)
+    .nearMinute(CONFIG.RESUMEN_MINUTO)
+    .everyDays(1)
+    .create();
+  Logger.log('Resumen diario programado a las ' + CONFIG.RESUMEN_HORA + ':' +
+    rellenar_(CONFIG.RESUMEN_MINUTO) + ' (hora del script).');
+}
+
+// ===========================================================================
 // Instalacion y prueba
 // ===========================================================================
 /** Ejecutar una vez desde el editor de Apps Script. */
@@ -766,6 +896,9 @@ function instalar() {
   Logger.log('Zona del script: ' + Session.getScriptTimeZone());
   Logger.log('Clave de instalacion: ' + CONFIG.CLAVE);
   Logger.log('Servicios configurados: ' + CONFIG.SERVICIOS.length);
+  programarResumen_();
+  Logger.log('Resumen de hoy (asi lo recibe el taller por mail):\n' +
+    resumenDelDia_(new Date()));
   Logger.log('Listo. Desplega como aplicacion web (acceso: cualquier usuario) y copia la URL /exec.');
 }
 

@@ -138,6 +138,78 @@ def duracion_en_minutos(inicio: datetime, fin: datetime) -> int:
     return int((fin - inicio).total_seconds() // 60)
 
 
+def telefono_internacional(telefono: str) -> str:
+    """'099123456' -> '59899123456' (links de WhatsApp y llamadas)."""
+    digitos = re.sub(r"\D", "", str(telefono or ""))
+    if digitos.startswith("598"):
+        return digitos
+    if digitos.startswith("0"):
+        digitos = digitos[1:]
+    return "598" + digitos
+
+
+def descripcion_de_reserva(codigo_reserva: str, elegido: dict, reserva: dict) -> str:
+    """Misma ficha que el backend real deja en el evento del calendario."""
+    tel = telefono_internacional(reserva["telefono"])
+    lineas = [
+        "Código: " + codigo_reserva,
+        "Servicio: " + elegido["nombre"] + (
+            " (deja el auto)" if elegido.get("deja")
+            else f" ({elegido['minutos']} min)"
+        ),
+        "Vehículo: " + reserva["vehiculo"],
+        "Cliente: " + reserva["nombre"],
+        "Teléfono: " + reserva["telefono"],
+        "WhatsApp: https://wa.me/" + tel,
+        "Llamar: tel:+" + tel,
+    ]
+    if reserva.get("email"):
+        lineas.append("Email: " + reserva["email"])
+    if reserva.get("comentario"):
+        lineas.append("Comentario: " + reserva["comentario"])
+    lineas.append("")
+    lineas.append("Reservado desde la web de Rosconi Garage.")
+    return "\n".join(lineas)
+
+
+def valor_de(descripcion: str, etiqueta: str) -> str:
+    encontrado = re.search(etiqueta + r": (.+)", str(descripcion or ""))
+    return encontrado.group(1).strip() if encontrado else ""
+
+
+def renglon_de_turno(reserva: dict) -> str:
+    """Un renglon del resumen que recibe el taller."""
+    renglon = (
+        f"{reserva['inicio']:%H:%M} a {reserva['fin']:%H:%M}"
+        f" · {reserva['vehiculo']}"
+        f" · {reserva['nombre']} ({reserva['telefono']})"
+        f" · {reserva['servicio']}"
+        f" · {reserva['linea'].lower()}"
+    )
+    if reserva.get("deja"):
+        renglon += " · DEJA EL AUTO"
+    if reserva.get("comentario"):
+        renglon += "\n    " + reserva["comentario"]
+    return renglon
+
+
+def resumen_del_dia(valor: str) -> str:
+    fecha = datetime.fromisoformat(valor).date() if valor else datetime.now().date()
+    del_dia = sorted((r for r in RESERVAS if r["inicio"].date() == fecha),
+                     key=lambda r: r["inicio"])
+    encabezado = "Turnos de Rosconi Garage para " + etiqueta(
+        datetime.combine(fecha, time(12, 0))
+    )
+    if not del_dia:
+        return encabezado + ": no hay turnos agendados por la web."
+    lineas = [encabezado + ":", ""]
+    for posicion, reserva in enumerate(del_dia, start=1):
+        lineas.append(f"{posicion}. " + renglon_de_turno(reserva))
+    lineas.append("")
+    lineas.append("Si el auto queda para el dia siguiente, estira el evento en el calendario.")
+    return "\n".join(lineas)
+
+
 def ocupados(inicio: datetime, fin: datetime) -> int:
     return sum(1 for r in RESERVAS if r["inicio"] < fin and r["fin"] > inicio)
 
@@ -256,11 +328,17 @@ def crear(cuerpo: dict) -> dict:
     if aviso:
         return {"ok": False, "error": "limite_alcanzado", "mensaje": aviso}
     nuevo = codigo()
-    RESERVAS.append({
+    reserva = {
         "codigo": nuevo, "inicio": inicio, "fin": fin,
         "nombre": str(cuerpo.get("nombre", "")), "telefono": telefono,
         "vehiculo": str(cuerpo.get("vehiculo", "")), "servicio": elegido["nombre"],
-    })
+        "email": str(cuerpo.get("email", "")),
+        "comentario": str(cuerpo.get("comentario", "")),
+        "linea": "ELEVADOR" if usados == 0 else "PISO",
+        "deja": bool(elegido.get("deja")),
+    }
+    reserva["descripcion"] = descripcion_de_reserva(nuevo, elegido, reserva)
+    RESERVAS.append(reserva)
     contar_reserva(telefono)
     return {
         "ok": True, "codigo": nuevo,
@@ -316,6 +394,14 @@ def control(accion: str, valor: str) -> dict:
         RESERVAS.clear()
         CERRADOS.clear()
         return {"ok": True, "mensaje": "Estado limpio."}
+    if accion == "ficha":
+        for reserva in RESERVAS:
+            if reserva["codigo"] == str(valor).upper():
+                return {"ok": True, "codigo": reserva["codigo"],
+                        "linea": reserva["linea"], "descripcion": reserva["descripcion"]}
+        return {"ok": False, "error": "no_encontrado", "mensaje": "Sin ficha para ese codigo."}
+    if accion == "resumen":
+        return {"ok": True, "resumen": resumen_del_dia(valor)}
     if accion == "reservas":
         return {"ok": True, "total": len(RESERVAS),
                 "reservas": [{"codigo": r["codigo"], "inicio": r["inicio"].isoformat(),

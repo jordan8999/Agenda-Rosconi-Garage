@@ -29,7 +29,7 @@ reservados** con una agenda propia (Google Calendar + Google Apps Script, sin pl
 └─ tools/
    ├─ appsscript/             # Backend de turnos (Code.gs + appsscript.json + guía)
    ├─ mock-turnos.py          # Backend falso para probar en local (mismo contrato)
-   ├─ pruebas-turnos.py       # 55 pruebas del contrato de reservas (mock o backend real)
+   ├─ pruebas-turnos.py       # 77 pruebas del contrato de reservas (mock o backend real)
    ├─ pruebas-ui.html         # Pruebas de integración manejando el sitio en un navegador
    ├─ pruebas-sintaxis.html   # Compila los scripts con el parser del navegador
    ├─ diagnostico-endpoint.html # Consulta el backend real desde el navegador
@@ -74,6 +74,10 @@ La reserva es **propia del taller**, no de una plataforma de terceros:
 2. Cuando el cliente confirma, la reserva se crea como **evento en el calendario**, con nombre,
    teléfono, vehículo y servicio, y el cliente recibe un **código** (`RG-XXXXXXXX`).
 3. Con ese código el cliente puede **consultar o cancelar** el turno desde la misma sección de turnos.
+4. El taller ve cada turno en su **Google Calendar**: el auto, el cliente con teléfono y **link a
+   WhatsApp**, el trabajo, la línea interna (elevador o piso) y el aviso cuando el auto queda en el
+   taller. Además recibe **un mail con el resumen del día** a las 7:30 y un **recordatorio** 60
+   minutos antes de cada turno (detalle en `tools/appsscript/README.md`).
 
 La puesta en marcha (5 minutos, una sola vez) está paso a paso en `tools/appsscript/README.md`.
 
@@ -138,7 +142,7 @@ agregarle `deja: true`.
 
 ```powershell
 python tools/mock-turnos.py        # backend falso en http://127.0.0.1:8130
-python tools/pruebas-turnos.py     # 55 pruebas del contrato (cupos, límites, modalidades)
+python tools/pruebas-turnos.py     # 77 pruebas del contrato (cupos, límites, modalidades, ficha del taller)
 python -m http.server 8125         # sitio; después abrir tools/pruebas-ui.html
 ```
 
