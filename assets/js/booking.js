@@ -14,7 +14,7 @@
     // URL de la app web de Apps Script del taller (termina en /exec).
     // Si alguna vez cambia (al implementar una version nueva), se reemplaza aca.
     ENDPOINT:
-      "https://script.google.com/macros/s/AKfycbyLFs_q6RvKFI5D6GNgapFV7L_o-a_Y9J8UVTIjWPB1ioZ5C8ZPVBZ3i2N_IXU0-pb_sw/exec",
+      "https://script.google.com/macros/s/AKfycbzIQY4586W2NT2bEceemIGefXRD1jLMWwDnqo4_0mXX6PixAY-ektDdE3d0q9s0WNxclg/exec",
     // Debe coincidir con CONFIG.CLAVE de tools/appsscript/Code.gs
     CLAVE: "rosconi-artigas-turnos-2026-k72b",
     SERVICIO_PREDETERMINADO: "Service completo y lubricentro",

@@ -16,7 +16,7 @@
     // Misma app web que usa el sitio (ver assets/js/booking.js).
     // Si cambia la direccion, se reemplaza aca tambien.
     ENDPOINT:
-      "https://script.google.com/macros/s/AKfycbyLFs_q6RvKFI5D6GNgapFV7L_o-a_Y9J8UVTIjWPB1ioZ5C8ZPVBZ3i2N_IXU0-pb_sw/exec",
+      "https://script.google.com/macros/s/AKfycbzIQY4586W2NT2bEceemIGefXRD1jLMWwDnqo4_0mXX6PixAY-ektDdE3d0q9s0WNxclg/exec",
     DIAS: 14,
     CLAVE_GUARDADA: "rosconi-panel-clave"
   };
