@@ -44,6 +44,18 @@ reservados** con una agenda propia (Google Calendar + Google Apps Script, sin pl
    └─ requirements.txt
 ```
 
+## Cómo está armado el sitio
+
+La hoja de estilos está escrita **primero para el celular**: una sola columna, botones de 48 px
+y nada que se salga de la pantalla. En pantallas grandes se agregan las columnas.
+
+- **Barra fija abajo** (`Reservar turno` + `WhatsApp`) mientras la pantalla mide menos de 960 px.
+  Arriba de 960 px se oculta: queda el acceso del encabezado y el WhatsApp flotante.
+- **Sección de turnos:** el botón grande abre la agenda, y *¿Ya tenés un turno?* pasó a ser un
+  plegable (`<details class="acc">`) para que no haya dos formularios compitiendo.
+- **Diálogo de reserva:** es una hoja que sube desde abajo, con cabecera fija, días y horarios
+  como botones grandes y el botón de confirmar siempre a la vista mientras se completan los datos.
+- Los textos del negocio, los meta tags y las pruebas siguen intactos: el rediseño es visual.
 ## Ver el sitio en local
 
 ```powershell

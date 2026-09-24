@@ -9,7 +9,7 @@
   <link rel="canonical" href="https://jordan8999.github.io/Agenda-Rosconi-Garage/">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <meta name="author" content="Rosconi Garage">
-  <meta name="theme-color" content="#0a0a0a">
+  <meta name="theme-color" content="#0b0b0b">
   <meta name="format-detection" content="telephone=no">
 
   <!-- Datos locales (SEO geográfico) -->
@@ -280,26 +280,26 @@
             </p>
           </div>
 
-          <div class="card reveal">
-            <div class="lane__head">
-              <h3>¿Ya tenés un turno?</h3>
-            </div>
-            <p class="lane__meta">
-              Ingresá el código que te dimos al reservar para verlo o cancelarlo.
-            </p>
-            <div class="campo">
-              <label for="gestion-codigo">Código del turno</label>
-              <div class="gestion__fila">
-                <input id="gestion-codigo" data-gestion-codigo type="text" autocomplete="off"
-                       placeholder="RG-XXXXXXXX" maxlength="11">
-                <button class="btn btn--ghost" type="button" data-gestion-buscar>Buscar</button>
+          <details class="acc reveal">
+            <summary>¿Ya tenés un turno?</summary>
+            <div class="acc__body">
+              <p class="lane__meta">
+                Ingresá el código que te dimos al reservar para verlo o cancelarlo.
+              </p>
+              <div class="campo">
+                <label for="gestion-codigo">Código del turno</label>
+                <div class="gestion__fila">
+                  <input id="gestion-codigo" data-gestion-codigo type="text" autocomplete="off"
+                         placeholder="RG-XXXXXXXX" maxlength="11">
+                  <button class="btn btn--ghost" type="button" data-gestion-buscar>Buscar</button>
+                </div>
               </div>
+              <p class="reserva__estado" data-gestion-resultado role="status" aria-live="polite"></p>
+              <button class="btn btn--ghost btn--block" type="button" data-gestion-cancelar hidden>
+                Cancelar este turno
+              </button>
             </div>
-            <p class="reserva__estado" data-gestion-resultado role="status" aria-live="polite"></p>
-            <button class="btn btn--ghost btn--block" type="button" data-gestion-cancelar hidden>
-              Cancelar este turno
-            </button>
-          </div>
+          </details>
         </div>
 
         <p class="notice reveal" style="margin-top: clamp(22px, 3vw, 30px);">
@@ -673,11 +673,12 @@
 
     <dialog class="reserva" id="reserva" aria-labelledby="reserva-titulo">
       <div class="reserva__caja">
-        <button class="reserva__cerrar" type="button" data-reserva-cerrar aria-label="Cerrar la reserva de turno">&times;</button>
-
         <header class="reserva__cabecera">
-          <p class="eyebrow">Reserva de turno</p>
-          <h3 id="reserva-titulo">Elegí el día y la hora</h3>
+          <div>
+            <p class="eyebrow">Reserva de turno</p>
+            <h3 id="reserva-titulo">Elegí el día y la hora</h3>
+          </div>
+          <button class="reserva__cerrar" type="button" data-reserva-cerrar aria-label="Cerrar la reserva de turno">&times;</button>
         </header>
 
         <p class="reserva__estado" data-reserva-estado role="status" aria-live="polite"></p>
@@ -764,6 +765,19 @@
       </div>
     </dialog>
   </main>
+
+    <!-- Barra fija: siempre a mano en el celular -->
+    <div class="acciones">
+      <button class="btn btn--primary" type="button" data-abrir-reserva>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
+        Reservar turno
+      </button>
+      <a class="btn btn--whatsapp" href="https://wa.me/59891317613?text=Hola%20Rosconi%20Garage%2C%20quiero%20pedir%20un%20turno."
+         target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.5 11.6a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.5-4.3A8.5 8.5 0 1 1 20.5 11.6Z"/><path d="M9.2 8.6c0 3.2 2.5 5.7 5.7 5.7"/></svg>
+        WhatsApp
+      </a>
+    </div>
 
   <footer class="footer">
     <div class="container">
