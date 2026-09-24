@@ -275,7 +275,23 @@
               return doc.querySelectorAll("[data-panel-resultados] .turno").length >= 1;
             }, "el buscador encuentra el turno por el auto");
           })
-          .then(function () {
+                     .then(function () {
+             doc.querySelector('[data-panel-vista="dia"]').click();
+             var tituloAntes = doc.querySelector("[data-panel-titulo-dia]").textContent;
+             doc.querySelector("[data-dia-siguiente]").click();
+             registrar(doc.querySelector("[data-panel-titulo-dia]").textContent !== tituloAntes,
+                       "las flechas de la fecha cambian de día");
+             registrar(doc.querySelectorAll(".pestana").length === 4,
+                       "la barra inferior tiene las tres secciones y el botón de anotar");
+             doc.querySelector(".pestana--anotar").click();
+             registrar(!doc.querySelector("[data-panel-hoja]").hidden,
+                       "el botón + abre la hoja para anotar un turno");
+             doc.querySelector("[data-cerrar-anotar]").click();
+             registrar(doc.querySelector("[data-panel-hoja]").hidden,
+                       "la hoja de anotar se cierra sin guardar");
+           })
+
+.then(function () {
             doc.querySelector("[data-panel-salir]").click();
             return esperar(function () {
               return !doc.querySelector("[data-panel-ingreso]").hidden;

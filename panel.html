@@ -2,123 +2,216 @@
 <html lang="es-UY">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
+  <meta name="color-scheme" content="dark">
   <title>Panel del taller | Rosconi Garage</title>
-  <meta name="description" content="Panel privado del taller: agenda del día, datos de cada auto y contacto directo con el cliente.">
-  <meta name="theme-color" content="#12100f">
+  <meta name="description" content="Panel privado del taller: la agenda del día, los datos de cada auto y el contacto directo con el cliente.">
+  <meta name="theme-color" content="#111013">
   <link rel="icon" href="assets/icons/favicon.ico" sizes="any">
   <link rel="stylesheet" href="assets/css/panel.css">
 </head>
 <body>
-  <header class="barra">
-    <p class="barra__marca"><span class="barra__punto" aria-hidden="true"></span> Rosconi Garage <span class="barra__sep">·</span> Panel del taller</p>
-    <div class="barra__acciones" data-panel-acciones hidden>
-      <button type="button" class="btn" data-panel-refrescar>Actualizar</button>
-      <button type="button" class="btn" data-panel-imprimir>Imprimir</button>
-      <button type="button" class="btn btn--tenue" data-panel-salir>Salir</button>
+  <a class="saltar" href="#panel-agenda">Ir a la agenda</a>
+
+  <!-- ============================================================ barra == -->
+  <header class="app">
+    <p class="app__marca">
+      <span class="app__logo" aria-hidden="true">RG</span>
+      <span class="app__nombre">Rosconi Garage</span>
+      <span class="app__sello">Panel del taller</span>
+    </p>
+    <div class="app__acciones" data-panel-acciones hidden>
+      <button class="icono" type="button" data-panel-refrescar aria-label="Actualizar la agenda" title="Actualizar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.6M20 5v6h-6"/></svg>
+      </button>
+      <button class="icono" type="button" data-panel-imprimir aria-label="Imprimir la hoja del día" title="Imprimir">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4h10v5M7 19H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2M7 15h10v5H7z"/></svg>
+      </button>
+      <button class="icono icono--texto" type="button" data-panel-salir>Salir</button>
     </div>
   </header>
 
   <p class="aviso" data-panel-aviso role="status" aria-live="polite"></p>
 
+  <!-- =========================================================== ingreso == -->
   <section class="ingreso" data-panel-ingreso hidden>
-    <h1>Panel del taller</h1>
-    <p>
-      Acá ves la agenda real del taller: qué auto llega, a qué hora, qué hay que hacerle
-      y cómo contactar al cliente. También podés anotar los turnos que llegan por teléfono.
-    </p>
-    <form data-panel-form-clave novalidate>
-      <label for="panel-clave">Clave de administración</label>
-      <input id="panel-clave" type="password" autocomplete="current-password"
-             placeholder="Clave del panel" required>
-      <button class="btn btn--principal" type="submit" data-panel-entrar>Entrar</button>
-    </form>
-    <p class="nota">
-      Es distinta de la clave del sitio. Está en <code>CONFIG.CLAVE_ADMIN</code> del script de
-      Apps Script y queda guardada solo en este dispositivo.
-    </p>
+    <div class="ingreso__caja">
+      <p class="ingreso__logo" aria-hidden="true">RG</p>
+      <h1 class="ingreso__titulo">Panel del taller</h1>
+      <p class="ingreso__texto">
+        La agenda real del taller: qué auto llega, a qué hora, qué hay que hacerle y cómo
+        contactar al cliente.
+      </p>
+      <form class="ingreso__form" data-panel-form-clave novalidate>
+        <label class="etiqueta" for="panel-clave">Clave del panel</label>
+        <input id="panel-clave" type="password" autocomplete="current-password"
+               inputmode="text" placeholder="Escribí la clave" required>
+        <button class="btn btn--principal btn--ancho" type="submit" data-panel-entrar>Entrar</button>
+      </form>
+      <p class="ingreso__pie">
+        <button class="enlace" type="button" data-abrir-ayuda>¿Dónde consigo la clave?</button>
+      </p>
+      <div class="ingreso__ayuda" data-panel-ayuda hidden>
+        <p>
+          Es la clave del panel, distinta de la del sitio. Está en tu proyecto de Apps Script:
+          <b>Configuración del proyecto</b> →
+          <b>Propiedades de la secuencia de comandos</b> → <code>claveAdmin</code>.
+        </p>
+        <p>Queda guardada solo en este dispositivo, así no la tenés que escribir cada vez.</p>
+      </div>
+    </div>
   </section>
 
-  <main data-panel-contenido hidden>
-    <nav class="pestanas" aria-label="Vistas del panel">
-      <button type="button" class="pestana" data-panel-vista="dia" aria-pressed="true">Día</button>
-      <button type="button" class="pestana" data-panel-vista="proximos" aria-pressed="false">Próximos 14 días</button>
-      <button type="button" class="pestana" data-panel-vista="buscar" aria-pressed="false">Buscar</button>
-    </nav>
+  <!-- ========================================================= contenido == -->
+  <main class="contenido" id="panel-agenda" data-panel-contenido hidden>
 
-    <section data-panel-seccion="dia">
-      <div class="tira" data-panel-tira role="group" aria-label="Elegir el día"></div>
-
-      <div class="dia__cabecera">
-        <div>
-          <h1 data-panel-titulo-dia>Cargando…</h1>
+    <!-- ----------------------------------------------------------- hoy -- -->
+    <section class="vista" data-panel-seccion="dia">
+      <div class="dia">
+        <button class="flecha" type="button" data-dia-anterior aria-label="Día anterior">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="dia__centro">
+          <p class="dia__kicker" data-panel-kicker>Hoy</p>
+          <h1 class="dia__fecha" data-panel-titulo-dia>Cargando…</h1>
           <p class="dia__resumen" data-panel-resumen-dia></p>
-          <p class="dia__proximo" data-panel-proximo hidden></p>
         </div>
-        <label class="salto">
-          Ir a otro día
-          <input type="date" data-panel-fecha>
-        </label>
+        <button class="flecha" type="button" data-dia-siguiente aria-label="Día siguiente">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
       </div>
+
+      <p class="siguiente" data-panel-proximo hidden></p>
+
+      <div class="tira" data-panel-tira role="group" aria-label="Elegir el día"></div>
 
       <div class="turnos" data-panel-turnos></div>
 
-      <div class="libres" data-panel-libres></div>
+      <button class="anotar-fila" type="button" data-abrir-anotar>
+        <b aria-hidden="true">+</b> Anotar un turno que llegó por teléfono
+      </button>
 
-      <details class="anotar">
-        <summary>Anotar un turno que llegó por teléfono</summary>
-        <form data-panel-form-anotar novalidate>
-          <div class="campos">
-            <div class="campo">
-              <label for="anotar-servicio">Trabajo</label>
-              <select id="anotar-servicio" data-anotar-servicio></select>
-            </div>
-            <div class="campo">
-              <label for="anotar-fecha">Día</label>
-              <input id="anotar-fecha" type="date" data-anotar-fecha required>
-            </div>
-            <div class="campo">
-              <label for="anotar-hora">Hora</label>
-              <input id="anotar-hora" type="time" step="900" data-anotar-hora required>
-            </div>
-            <div class="campo">
-              <label for="anotar-nombre">Cliente</label>
-              <input id="anotar-nombre" type="text" maxlength="80" data-anotar-nombre required>
-            </div>
-            <div class="campo">
-              <label for="anotar-telefono">Teléfono</label>
-              <input id="anotar-telefono" type="tel" maxlength="20" data-anotar-telefono required>
-            </div>
-            <div class="campo">
-              <label for="anotar-vehiculo">Vehículo</label>
-              <input id="anotar-vehiculo" type="text" maxlength="80" data-anotar-vehiculo placeholder="Marca, modelo y año" required>
-            </div>
-            <div class="campo campo--ancho">
-              <label for="anotar-comentario">Qué hay que hacer</label>
-              <textarea id="anotar-comentario" rows="2" maxlength="500" data-anotar-comentario></textarea>
-            </div>
-          </div>
-          <button class="btn btn--principal" type="submit" data-anotar-enviar>Guardar turno</button>
-        </form>
+      <details class="plegable">
+        <summary class="plegable__titulo">Ir a otra fecha</summary>
+        <div class="plegable__cuerpo">
+          <label class="etiqueta" for="panel-fecha">Elegí el día en el calendario</label>
+          <input class="campo" id="panel-fecha" type="date" data-panel-fecha>
+        </div>
+      </details>
+
+      <details class="plegable plegable--libres">
+        <summary class="plegable__titulo">Lugares libres para un trabajo de 1 hora</summary>
+        <div class="plegable__cuerpo">
+          <div class="chips" data-panel-libres></div>
+        </div>
       </details>
     </section>
 
-    <section data-panel-seccion="proximos" hidden>
-      <h1>Próximos 14 días</h1>
+    <!-- ------------------------------------------------------- próximos -- -->
+    <section class="vista" data-panel-seccion="proximos" hidden>
+      <header class="vista__cabecera">
+        <h1 class="vista__titulo">Próximos 14 días</h1>
+        <p class="vista__ayuda">Tocá un día para ver su agenda completa.</p>
+      </header>
       <div class="proximos" data-panel-proximos></div>
     </section>
 
-    <section data-panel-seccion="buscar" hidden>
-      <h1>Buscar un turno</h1>
+    <!-- --------------------------------------------------------- buscar -- -->
+    <section class="vista" data-panel-seccion="buscar" hidden>
+      <header class="vista__cabecera">
+        <h1 class="vista__titulo">Buscar un turno</h1>
+        <p class="vista__ayuda">Por nombre del cliente, teléfono, auto o código.</p>
+      </header>
       <form class="buscar" data-panel-form-buscar novalidate>
-        <label class="oculto" for="panel-buscar">Buscar</label>
-        <input id="panel-buscar" type="search" placeholder="Cliente, teléfono, auto o código" data-panel-texto-buscar>
+        <label class="oculto" for="panel-buscar">Buscar un turno</label>
+        <span class="buscar__lupa" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        </span>
+        <input id="panel-buscar" type="search" inputmode="search"
+               placeholder="Ej.: Sandero, Juan, 099…" data-panel-texto-buscar>
         <button class="btn btn--principal" type="submit">Buscar</button>
       </form>
       <div class="turnos" data-panel-resultados></div>
     </section>
   </main>
+
+  <!-- ==================================================== barra inferior == -->
+  <nav class="pestanas" data-panel-navegacion aria-label="Secciones del panel" hidden>
+    <button class="pestana" type="button" data-panel-vista="dia" aria-pressed="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v3M16 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg>
+      <span>Hoy</span>
+    </button>
+    <button class="pestana" type="button" data-panel-vista="proximos" aria-pressed="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>Próximos</span>
+    </button>
+    <button class="pestana" type="button" data-panel-vista="buscar" aria-pressed="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <span>Buscar</span>
+    </button>
+    <button class="pestana pestana--anotar" type="button" data-abrir-anotar
+            aria-label="Anotar un turno" title="Anotar un turno">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </nav>
+
+  <!-- =========================================================== anotar == -->
+  <div class="hoja" data-panel-hoja hidden>
+    <div class="hoja__fondo" data-cerrar-anotar></div>
+    <section class="hoja__cuerpo" role="dialog" aria-modal="true" aria-labelledby="hoja-titulo">
+      <header class="hoja__cabecera">
+        <div>
+          <h2 class="hoja__titulo" id="hoja-titulo">Anotar un turno</h2>
+          <p class="hoja__ayuda">Para los turnos que llegan por teléfono.</p>
+        </div>
+        <button class="icono" type="button" data-cerrar-anotar aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </header>
+
+      <form class="hoja__form" data-panel-form-anotar novalidate>
+        <div class="campos">
+          <div class="campo-grupo">
+            <label class="etiqueta" for="anotar-vehiculo">Vehículo</label>
+            <input class="campo" id="anotar-vehiculo" type="text" maxlength="80"
+                   placeholder="Marca, modelo y año" data-anotar-vehiculo required>
+          </div>
+          <div class="campo-grupo">
+            <label class="etiqueta" for="anotar-nombre">Cliente</label>
+            <input class="campo" id="anotar-nombre" type="text" maxlength="80"
+                   autocomplete="name" data-anotar-nombre required>
+          </div>
+          <div class="campo-grupo">
+            <label class="etiqueta" for="anotar-telefono">Teléfono</label>
+            <input class="campo" id="anotar-telefono" type="tel" maxlength="20"
+                   inputmode="tel" autocomplete="tel" placeholder="099 123 456" data-anotar-telefono required>
+          </div>
+          <div class="campo-grupo">
+            <label class="etiqueta" for="anotar-servicio">Trabajo</label>
+            <select class="campo" id="anotar-servicio" data-anotar-servicio></select>
+          </div>
+          <div class="campo-grupo">
+            <label class="etiqueta" for="anotar-fecha">Día</label>
+            <input class="campo" id="anotar-fecha" type="date" data-anotar-fecha required>
+          </div>
+          <div class="campo-grupo">
+            <label class="etiqueta" for="anotar-hora">Hora</label>
+            <input class="campo" id="anotar-hora" type="time" step="900" data-anotar-hora required>
+          </div>
+          <div class="campo-grupo campo-grupo--ancho">
+            <label class="etiqueta" for="anotar-comentario">Qué hay que hacer</label>
+            <textarea class="campo" id="anotar-comentario" rows="3" maxlength="500"
+                      placeholder="Detalle del trabajo, repuestos, algo a tener en cuenta…"
+                      data-anotar-comentario></textarea>
+          </div>
+        </div>
+        <footer class="hoja__pie">
+          <button class="btn btn--principal btn--ancho" type="submit" data-anotar-enviar>Guardar turno</button>
+        </footer>
+      </form>
+    </section>
+  </div>
 
   <footer class="pie">
     Rosconi Garage · Lavalleja 730, Artigas · <span data-panel-version>panel</span>
@@ -127,3 +220,4 @@
   <script src="assets/js/panel.js" defer></script>
 </body>
 </html>
+

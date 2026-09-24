@@ -32,9 +32,9 @@ reservados** con una agenda propia (Google Calendar + Google Apps Script, sin pl
 └─ tools/
    ├─ appsscript/             # Backend de turnos (Code.gs + appsscript.json + guía)
    ├─ mock-turnos.py          # Backend falso para probar en local (mismo contrato)
-   ├─ pruebas-turnos.py       # 106 pruebas del contrato (reservas + panel del taller)
+   ├─ pruebas-turnos.py       # 116 pruebas del contrato (reservas + panel del taller)
    ├─ pruebas-ui.html         # Pruebas de integración manejando el sitio en un navegador
-   ├─ pruebas-panel.html      # Pruebas de integración del panel (clave, agenda, anotar, listo)
+   ├─ pruebas-panel.html      # 33 pruebas del panel (clave, agenda, anotar, listo, navegación)
    ├─ pruebas-sintaxis.html   # Compila los scripts con el parser del navegador
    ├─ diagnostico-endpoint.html # Consulta el backend real desde el navegador
    ├─ diagnostico-desborde.html # Mide desborde horizontal en 320–1440 px
@@ -146,7 +146,7 @@ agregarle `deja: true`.
 
 ```powershell
 python tools/mock-turnos.py        # backend falso en http://127.0.0.1:8130
-python tools/pruebas-turnos.py     # 106 pruebas del contrato (reservas, límites, panel del taller)
+python tools/pruebas-turnos.py     # 116 pruebas del contrato (reservas, límites, panel del taller)
 python -m http.server 8125         # sitio; después abrir tools/pruebas-ui.html
 ```
 
