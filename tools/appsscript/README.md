@@ -120,13 +120,17 @@ La página `panel.html` del sitio es el tablero privado del dueño: agenda del d
 próximos 14 días, búsqueda, WhatsApp y llamada en un clic, marcar un trabajo como listo y
 anotar los turnos que llegan por teléfono.
 
-**Clave del panel:** es distinta de la clave pública y **no está en el repositorio**. Se
+**Clave del panel:** es distinta de la clave publica y **no esta en el repositorio**. Se
 crea sola la primera vez que se ejecuta `instalar` (aparece en el registro como
-`CLAVE DEL PANEL DEL TALLER: rg-panel-...`) y se guarda en las propiedades del script, así
-no queda publicada. Si alguna vez se olvida: ejecutar `instalar` de nuevo y leer el registro.
-Para cambiarla, borrar la propiedad `claveAdmin` del proyecto (Configuración del proyecto >
-Propiedades de la secuencia de comandos) y volver a ejecutar `instalar`; después hay que
-escribirla otra vez en el panel.
+`CLAVE DEL PANEL DEL TALLER: rg-panel-...`) y se guarda en **Propiedades de la secuencia de
+comandos** con el nombre `claveAdmin`, asi no queda publicada.
+
+> **Ojo con la prioridad:** si la propiedad `claveAdmin` existe, **esa es la clave** y
+> `CONFIG.CLAVE_ADMIN` queda ignorado. Para cambiarla **sin reimplementar nada**:
+> Configuracion del proyecto > Propiedades de la secuencia de comandos > editar
+> `claveAdmin`. Si en cambio queres que valga la del codigo, borra esa propiedad e
+> implementa una **nueva version**. `instalar` te avisa en el registro cuando el codigo y
+> la propiedad dicen cosas distintas.
 
 Todas las acciones del panel (`panel`, `buscar`, `anotar`, `listo`, `estado`) exigen esa
 clave: **la clave pública del sitio no da acceso al panel**. Se puede comprobar con la
