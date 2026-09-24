@@ -1191,6 +1191,12 @@ function instalar() {
   Logger.log('Resumen de hoy (asi lo recibe el taller por mail):\n' +
     resumenDelDia_(new Date()));
   Logger.log('CLAVE DEL PANEL DEL TALLER: ' + prepararClaveAdmin_());
+  var claveEnPropiedades = PropertiesService.getScriptProperties().getProperty('claveAdmin');
+  if (claveEnPropiedades && claveEnPropiedades !== CONFIG.CLAVE_ADMIN) {
+    Logger.log('ATENCION: en el codigo figura la clave "' + CONFIG.CLAVE_ADMIN +
+      '", pero la que manda es la PROPIEDAD del script ("' + claveEnPropiedades + '"). ' +
+      'Si queres usar la del codigo, borra la propiedad claveAdmin.');
+  }
   Logger.log('Guardala: es la que se escribe una sola vez en la pagina panel.html ' +
     'del sitio. Queda en las propiedades del script, no en el codigo. ' +
     'Si la queres cambiar, borra la propiedad claveAdmin y volve a ejecutar instalar.');
